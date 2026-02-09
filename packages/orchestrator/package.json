@@ -1,0 +1,31 @@
+{
+  "name": "@auto-blogger/orchestrator",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "vitest run",
+    "clean": "rm -rf dist .turbo",
+    "worker": "node --loader ts-node/esm src/worker.ts"
+  },
+  "dependencies": {
+    "@auto-blogger/core": "workspace:*",
+    "@auto-blogger/database": "workspace:*",
+    "@auto-blogger/data-ingestion": "workspace:*",
+    "@auto-blogger/content-pipeline": "workspace:*",
+    "@auto-blogger/publishing": "workspace:*",
+    "@temporalio/client": "^1.11.0",
+    "@temporalio/worker": "^1.11.0",
+    "@temporalio/workflow": "^1.11.0",
+    "@temporalio/activity": "^1.11.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0",
+    "vitest": "^2.1.0",
+    "@types/node": "^22.0.0"
+  }
+}

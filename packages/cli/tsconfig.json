@@ -1,0 +1,17 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": "./src"
+  },
+  "include": ["src/**/*"],
+  "references": [
+    { "path": "../core" },
+    { "path": "../database" },
+    { "path": "../data-ingestion" },
+    { "path": "../content-pipeline" },
+    { "path": "../publishing" },
+    { "path": "../orchestrator" },
+    { "path": "../monitoring" }
+  ]
+}

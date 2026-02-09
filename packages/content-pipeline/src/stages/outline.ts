@@ -1,0 +1,71 @@
+import type {
+  ChannelConfig,
+  ResearchBrief,
+  ContentOutline,
+} from "@auto-blogger/core";
+import { createChildLogger } from "@auto-blogger/core";
+import { callLlmJson } from "../llm.js";
+
+const logger = createChildLogger({ module: "pipeline:outline" });
+
+/**
+ * Outline Stage: Create section-by-section structure from the research brief.
+ * Uses Sonnet for cost efficiency.
+ */
+export async function runOutlineStage(
+  config: ChannelConfig,
+  brief: ResearchBrief
+): Promise<{ outline: ContentOutline; cost: number }> {
+  logger.info({ channelId: config.id }, "Starting outline stage");
+
+  const systemPrompt = `You are a content strategist creating an outline for a ${config.contentType}.
+
+Topic: ${config.topic.focus}
+Target word count: ${config.targetWordCount}
+Voice: ${config.voice.name} — ${config.voice.tone} tone
+
+The outline should:
+1. Start with a compelling hook/intro
+2. Have 3-6 well-structured sections
+3. Assign specific data points from the research brief to each section
+4. End with a strong conclusion
+5. Be designed for the "${config.contentType}" format
+
+Create an outline that will keep readers engaged throughout. Vary section lengths — some should be short and punchy, others more detailed.
+
+Respond with JSON:
+{
+  "headline": "Compelling headline",
+  "hook": "Opening hook paragraph concept",
+  "sections": [
+    {
+      "title": "Section Title",
+      "keyPoints": ["point 1", "point 2"],
+      "assignedDataPoints": ["references to specific facts from the brief"],
+      "targetWordCount": 250
+    }
+  ],
+  "conclusion": "How to wrap up",
+  "estimatedWordCount": 1500
+}`;
+
+  const userPrompt = `Research Brief:\n\n${JSON.stringify(brief, null, 2)}\n\nCreate an outline as JSON.`;
+
+  const { data, cost } = await callLlmJson<Omit<ContentOutline, "channelId">>(
+    "sonnet",
+    systemPrompt,
+    userPrompt
+  );
+
+  const outline: ContentOutline = {
+    channelId: config.id,
+    ...data,
+  };
+
+  logger.info(
+    { channelId: config.id, sectionCount: outline.sections.length, cost },
+    "Outline stage complete"
+  );
+
+  return { outline, cost };
+}

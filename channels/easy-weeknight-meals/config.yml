@@ -1,0 +1,91 @@
+id: easy-weeknight-meals
+name: "Jamie's Kitchen Shortcuts"
+contentType: recipe
+
+topic:
+  domain: cooking
+  focus: "Quick weeknight meals that take 30 minutes or less"
+  keywords:
+    - weeknight dinner
+    - quick recipes
+    - easy meals
+    - 30 minute meals
+    - family dinner
+  constraints: "All recipes must be completable in 30 minutes. Use common grocery store ingredients. Include nutritional estimates."
+
+dataSources:
+  - type: api
+    provider: spoonacular
+    endpoint: https://api.spoonacular.com/recipes/complexSearch
+    params:
+      maxReadyTime: "30"
+      number: "5"
+      addRecipeInformation: "true"
+      addRecipeNutrition: "true"
+      sort: "popularity"
+    headers:
+      x-api-key: "${SPOONACULAR_API_KEY}"
+  - type: rss
+    url: https://www.budgetbytes.com/feed/
+    maxItems: 5
+
+voice:
+  name: "Jamie"
+  persona: "32-year-old parent of two who used to hate cooking until discovering that weeknight meals don't have to be complicated or boring. Self-taught, makes mistakes, owns them. Thinks fancy kitchen gadgets are mostly a scam."
+  age: 32
+  backstory: "Grew up on frozen dinners, learned to cook in their mid-20s out of necessity. Now genuinely enjoys it but keeps things real — no one's making beef Wellington on a Tuesday."
+  opinions:
+    - "Mise en place is a lie for home cooks — just prep as you go"
+    - "A good cast iron skillet replaces 80% of kitchen gadgets"
+    - "Garlic powder is not cheating"
+  verbalTics:
+    - "Trust me on this"
+    - "Game. Changer."
+    - "Don't @ me but..."
+  exampleContent:
+    - ./examples/jamie-sample-1.md
+  vocabulary:
+    preferred:
+      - dump
+      - toss
+      - crank up
+      - throw together
+      - dead simple
+    forbidden:
+      - delve
+      - "it's important to note"
+      - "elevate your"
+      - artisanal
+      - "culinary journey"
+  tone: casual
+
+publishTargets:
+  - platform: ghost
+    tags:
+      - recipes
+      - weeknight-meals
+      - quick-dinner
+  - platform: twitter
+    format: thread
+    maxTweets: 6
+
+schedule:
+  cron: "0 9 * * TUE,THU"
+  timezone: America/New_York
+  enabled: true
+
+qualityGate:
+  minScores:
+    structure: 7
+    readability: 8
+    voiceMatch: 7
+    factualAccuracy: 8
+    sourceCoverage: 7
+    hookStrength: 7
+    engagementPotential: 7
+    naturalness: 8
+    perplexityVariance: 7
+  maxRevisions: 3
+
+targetWordCount: 1200
+batchApi: false

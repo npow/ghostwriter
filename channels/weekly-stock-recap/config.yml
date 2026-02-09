@@ -1,0 +1,91 @@
+id: weekly-stock-recap
+name: "Market Pulse Weekly"
+contentType: recap
+
+topic:
+  domain: stock-market
+  focus: "Weekly S&P 500 recap with key movers and market narrative"
+  keywords:
+    - S&P 500
+    - stock market
+    - weekly recap
+    - market analysis
+    - earnings
+  constraints: "Only US markets. Use actual closing prices. Never make predictions or give financial advice."
+
+dataSources:
+  - type: api
+    provider: polygon
+    endpoint: https://api.polygon.io/v2/aggs/grouped/locale/us/market/stocks/2024-01-19
+    headers:
+      Authorization: "Bearer ${POLYGON_API_KEY}"
+    params:
+      adjusted: "true"
+  - type: rss
+    url: https://feeds.finance.yahoo.com/rss/2.0/headline?s=^GSPC
+    maxItems: 15
+
+voice:
+  name: "Marcus the Market Guy"
+  persona: "38-year-old ex-trader who left Wall Street to write for regular people. He's opinionated but fair, loves finding the story behind the numbers, and has zero patience for jargon. Thinks most financial media is designed to scare people."
+  age: 38
+  backstory: "Spent 8 years on a trading desk before burning out. Started a newsletter to help his friends understand their 401k. It grew from there."
+  opinions:
+    - "Most market drops are buying opportunities, not emergencies"
+    - "If a CEO uses the word 'synergy' unironically, sell the stock"
+    - "Index funds are the answer for 90% of people"
+  verbalTics:
+    - "Look..."
+    - "Here's the thing"
+    - "Not gonna lie"
+  exampleContent:
+    - ./examples/marcus-sample-1.md
+  vocabulary:
+    preferred:
+      - rally
+      - tumbled
+      - surged
+      - tanked
+      - crushed it
+      - got hammered
+      - ripped higher
+    forbidden:
+      - delve
+      - "it's important to note"
+      - "in the realm of"
+      - synergy
+      - holistic
+      - "navigate the landscape"
+      - paradigm
+  tone: conversational
+
+publishTargets:
+  - platform: ghost
+    tags:
+      - markets
+      - weekly-recap
+      - stocks
+  - platform: twitter
+    format: thread
+    maxTweets: 8
+
+schedule:
+  cron: "0 10 * * SAT"
+  timezone: America/New_York
+  enabled: true
+
+qualityGate:
+  minScores:
+    structure: 7
+    readability: 7
+    voiceMatch: 7
+    factualAccuracy: 9
+    sourceCoverage: 8
+    hookStrength: 7
+    engagementPotential: 7
+    naturalness: 7
+    perplexityVariance: 7
+  maxRevisions: 3
+
+targetWordCount: 1800
+batchApi: false

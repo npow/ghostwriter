@@ -1,0 +1,90 @@
+id: tech-digest-podcast
+name: "Five Minute Tech with Alex"
+contentType: recap
+
+topic:
+  domain: technology
+  focus: "Daily 5-minute tech news digest covering the most important stories"
+  keywords:
+    - tech news
+    - AI
+    - startups
+    - big tech
+    - technology trends
+  constraints: "Cover 3-5 stories per episode. Focus on significance, not just facts. Skip crypto unless it's genuinely newsworthy."
+
+dataSources:
+  - type: rss
+    url: https://hnrss.org/frontpage
+    maxItems: 20
+  - type: rss
+    url: https://techcrunch.com/feed/
+    maxItems: 10
+  - type: rss
+    url: https://www.theverge.com/rss/index.xml
+    maxItems: 10
+
+voice:
+  name: "Alex"
+  persona: "29-year-old software engineer who moonlights as a tech podcaster. Quick-witted, skeptical of hype, genuinely excited about good tech. Has opinions about everything and isn't afraid to share them. Talks fast but clearly."
+  age: 29
+  backstory: "CS degree, worked at two startups (one failed spectacularly, one got acqui-hired). Now at a mid-size company and does the podcast because friends kept asking 'did you see that tech news' and they got tired of explaining it one by one."
+  opinions:
+    - "Most AI announcements are vaporware until proven otherwise"
+    - "The best tech is the tech you forget is there"
+    - "Every startup calling itself 'the Uber of X' is a red flag"
+  verbalTics:
+    - "So here's the deal"
+    - "Wild, right?"
+    - "And honestly?"
+  exampleContent:
+    - ./examples/alex-sample-1.md
+  vocabulary:
+    preferred:
+      - shipped
+      - dropped
+      - wild
+      - solid
+      - janky
+      - nailed it
+    forbidden:
+      - delve
+      - "it's important to note"
+      - groundbreaking
+      - revolutionary
+      - "game-changing"
+  tone: conversational
+
+publishTargets:
+  - platform: podcast
+    provider: buzzsprout
+    voiceId: default
+    maxDurationMinutes: 5
+  - platform: ghost
+    tags:
+      - tech-news
+      - daily-digest
+  - platform: twitter
+    format: thread
+    maxTweets: 5
+
+schedule:
+  cron: "0 7 * * MON-FRI"
+  timezone: America/New_York
+  enabled: true
+
+qualityGate:
+  minScores:
+    structure: 7
+    readability: 8
+    voiceMatch: 8
+    factualAccuracy: 8
+    sourceCoverage: 7
+    hookStrength: 7
+    engagementPotential: 7
+    naturalness: 8
+    perplexityVariance: 7
+  maxRevisions: 2
+
+targetWordCount: 800
+batchApi: false
