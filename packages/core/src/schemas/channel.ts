@@ -66,6 +66,7 @@ export const VoiceSchema = z.object({
 
 export const GhostTargetSchema = z.object({
   platform: z.literal("ghost"),
+  id: z.string().optional(), // Unique target ID (e.g. "my-ghost-blog")
   url: z.string().url().optional(),
   apiKey: z.string().optional(),
   tags: z.array(z.string()).default([]),
@@ -74,12 +75,14 @@ export const GhostTargetSchema = z.object({
 
 export const TwitterTargetSchema = z.object({
   platform: z.literal("twitter"),
+  id: z.string().optional(),
   format: z.enum(["single", "thread"]).default("thread"),
   maxTweets: z.number().positive().default(10),
 });
 
 export const PodcastTargetSchema = z.object({
   platform: z.literal("podcast"),
+  id: z.string().optional(),
   provider: z.enum(["buzzsprout", "transistor"]).default("buzzsprout"),
   voiceId: z.string().optional(),
   maxDurationMinutes: z.number().positive().default(10),
@@ -87,12 +90,14 @@ export const PodcastTargetSchema = z.object({
 
 export const EtsyTargetSchema = z.object({
   platform: z.literal("etsy"),
+  id: z.string().optional(),
   shopId: z.string().optional(),
   productType: z.string(),
 });
 
 export const WordPressTargetSchema = z.object({
   platform: z.literal("wordpress"),
+  id: z.string().optional(), // Unique target ID (e.g. "tech-blog", "recipes-site")
   url: z.string().url(),
   username: z.string().optional(),
   password: z.string().optional(),

@@ -4,14 +4,15 @@ import type {
   PlatformContent,
   PublishTarget,
 } from "@auto-blogger/core";
-import { createChildLogger } from "@auto-blogger/core";
+import { createChildLogger, resolveTargetId } from "@auto-blogger/core";
 import { callLlm } from "../llm.js";
 
 const logger = createChildLogger({ module: "pipeline:adapt" });
 
 /**
  * Adapt Stage: Reformat content for each target platform.
- * Fan-out: one adaptation per platform.
+ * Fan-out: one adaptation per publish target. Each gets a targetId
+ * so the publisher knows exactly which connection to use.
  */
 export async function runAdaptStage(
   config: ChannelConfig,
@@ -25,11 +26,14 @@ export async function runAdaptStage(
   let totalCost = 0;
   const adaptations: PlatformContent[] = [];
 
-  for (const target of config.publishTargets) {
+  for (let i = 0; i < config.publishTargets.length; i++) {
+    const target = config.publishTargets[i];
+    const targetId = resolveTargetId(target, i);
     const { adaptation, cost } = await adaptForPlatform(
       config,
       draft,
-      target
+      target,
+      targetId
     );
     adaptations.push(adaptation);
     totalCost += cost;
@@ -46,7 +50,8 @@ export async function runAdaptStage(
 async function adaptForPlatform(
   config: ChannelConfig,
   draft: ContentDraft,
-  target: PublishTarget
+  target: PublishTarget,
+  targetId: string
 ): Promise<{ adaptation: PlatformContent; cost: number }> {
   const platform = target.platform;
 
@@ -56,6 +61,7 @@ async function adaptForPlatform(
       adaptation: {
         channelId: config.id,
         platform,
+        targetId,
         format: "markdown",
         content: draft.content,
         metadata: {
@@ -69,17 +75,17 @@ async function adaptForPlatform(
 
   // Twitter: convert to thread
   if (platform === "twitter") {
-    return adaptForTwitter(config, draft, target);
+    return adaptForTwitter(config, draft, target, targetId);
   }
 
   // Podcast: convert to script
   if (platform === "podcast") {
-    return adaptForPodcast(config, draft, target);
+    return adaptForPodcast(config, draft, target, targetId);
   }
 
   // Etsy: convert to product listing
   if (platform === "etsy") {
-    return adaptForEtsy(config, draft);
+    return adaptForEtsy(config, draft, targetId);
   }
 
   // Fallback: return as-is
@@ -87,6 +93,7 @@ async function adaptForPlatform(
     adaptation: {
       channelId: config.id,
       platform,
+      targetId,
       format: "raw",
       content: draft.content,
       metadata: {},
@@ -98,7 +105,8 @@ async function adaptForPlatform(
 async function adaptForTwitter(
   config: ChannelConfig,
   draft: ContentDraft,
-  target: PublishTarget & { platform: "twitter" }
+  target: PublishTarget & { platform: "twitter" },
+  targetId: string
 ): Promise<{ adaptation: PlatformContent; cost: number }> {
   const systemPrompt = `Convert the following article into a Twitter/X thread.
 
@@ -122,6 +130,7 @@ Return ONLY the tweets, separated by ---.`;
     adaptation: {
       channelId: config.id,
       platform: "twitter",
+      targetId,
       format: target.format,
       content: result.content,
       metadata: { tweetCount: result.content.split("---").length },
@@ -133,7 +142,8 @@ Return ONLY the tweets, separated by ---.`;
 async function adaptForPodcast(
   config: ChannelConfig,
   draft: ContentDraft,
-  target: PublishTarget & { platform: "podcast" }
+  target: PublishTarget & { platform: "podcast" },
+  targetId: string
 ): Promise<{ adaptation: PlatformContent; cost: number }> {
   const systemPrompt = `Convert this article into a podcast script for a ${target.maxDurationMinutes}-minute episode.
 
@@ -156,6 +166,7 @@ Return the full podcast script.`;
     adaptation: {
       channelId: config.id,
       platform: "podcast",
+      targetId,
       format: "script",
       content: result.content,
       metadata: {
@@ -169,7 +180,8 @@ Return the full podcast script.`;
 
 async function adaptForEtsy(
   config: ChannelConfig,
-  draft: ContentDraft
+  draft: ContentDraft,
+  targetId: string
 ): Promise<{ adaptation: PlatformContent; cost: number }> {
   const systemPrompt = `Convert this content into an Etsy digital product listing.
 
@@ -189,6 +201,7 @@ Format as JSON: { "title": "...", "description": "...", "tags": [...], "whatsInc
     adaptation: {
       channelId: config.id,
       platform: "etsy",
+      targetId,
       format: "listing",
       content: result.content,
       metadata: {},

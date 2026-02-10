@@ -133,6 +133,7 @@ export type ReviewResult = z.infer<typeof ReviewResultSchema>;
 export const PlatformContentSchema = z.object({
   channelId: z.string(),
   platform: z.string(),
+  targetId: z.string().optional(), // Links to specific PublishTarget.id
   format: z.string(),
   content: z.string(),
   metadata: z.record(z.unknown()).default({}),
