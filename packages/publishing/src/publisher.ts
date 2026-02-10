@@ -7,43 +7,110 @@ import { env, createChildLogger } from "@auto-blogger/core";
 import { publishToGhost } from "./adapters/ghost.js";
 import { publishToTwitter } from "./adapters/twitter.js";
 import { publishToPodcast } from "./adapters/podcast.js";
+import {
+  generateIdempotencyKey,
+  isAlreadyPublished,
+  getPreviousPublish,
+  recordPublish,
+} from "./idempotency.js";
 
 const logger = createChildLogger({ module: "publishing" });
 
+export interface PublishOptions {
+  force?: boolean; // Skip idempotency check
+}
+
 /**
  * Publish adapted content to all target platforms.
+ * Uses idempotency keys to prevent duplicate publishes on retry.
+ * Implements saga pattern: tracks per-platform state for rollback visibility.
  */
 export async function publishAll(
   config: ChannelConfig,
-  adaptations: PlatformContent[]
+  adaptations: PlatformContent[],
+  options?: PublishOptions
 ): Promise<PublishResult[]> {
   logger.info(
     { channelId: config.id, platforms: adaptations.length },
     "Starting publishing"
   );
 
-  const results = await Promise.allSettled(
-    adaptations.map((adaptation) => publishOne(config, adaptation))
-  );
+  const results: PublishResult[] = [];
+  const succeeded: PublishResult[] = [];
+  const failed: PublishResult[] = [];
 
-  return results.map((result, idx) => {
-    if (result.status === "fulfilled") {
-      return result.value;
+  // Publish sequentially to maintain saga ordering
+  // (parallel publish makes rollback harder to reason about)
+  for (const adaptation of adaptations) {
+    const idempotencyKey = generateIdempotencyKey(
+      config.id,
+      adaptation.platform,
+      adaptation.content
+    );
+
+    // Idempotency check: skip if already published
+    if (!options?.force && isAlreadyPublished(idempotencyKey)) {
+      const prev = getPreviousPublish(idempotencyKey);
+      logger.info(
+        { platform: adaptation.platform, idempotencyKey },
+        "Skipping duplicate publish (idempotency)"
+      );
+      results.push({
+        channelId: config.id,
+        platform: adaptation.platform,
+        success: true,
+        url: prev?.url,
+        platformId: prev?.platformId,
+        publishedAt: prev?.publishedAt ?? new Date().toISOString(),
+      });
+      continue;
     }
 
-    const error =
-      result.reason instanceof Error
-        ? result.reason.message
-        : String(result.reason);
+    try {
+      const result = await publishOne(config, adaptation);
+      results.push(result);
 
-    return {
-      channelId: config.id,
-      platform: adaptations[idx].platform,
-      success: false,
-      error,
-      publishedAt: new Date().toISOString(),
-    };
-  });
+      if (result.success) {
+        succeeded.push(result);
+        recordPublish(idempotencyKey, {
+          idempotencyKey,
+          platform: adaptation.platform,
+          channelId: config.id,
+          publishedAt: result.publishedAt,
+          platformId: result.platformId,
+          url: result.url,
+        });
+      } else {
+        failed.push(result);
+      }
+    } catch (err) {
+      const error =
+        err instanceof Error ? err.message : String(err);
+      const result: PublishResult = {
+        channelId: config.id,
+        platform: adaptation.platform,
+        success: false,
+        error,
+        publishedAt: new Date().toISOString(),
+      };
+      results.push(result);
+      failed.push(result);
+    }
+  }
+
+  // Log saga summary
+  if (failed.length > 0) {
+    logger.warn(
+      {
+        channelId: config.id,
+        succeeded: succeeded.map((r) => r.platform),
+        failed: failed.map((r) => `${r.platform}: ${r.error}`),
+      },
+      "Partial publish failure — some platforms succeeded, others failed"
+    );
+  }
+
+  return results;
 }
 
 async function publishOne(

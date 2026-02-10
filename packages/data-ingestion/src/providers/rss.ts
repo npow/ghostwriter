@@ -1,9 +1,10 @@
 import Parser from "rss-parser";
 import type { SourceMaterial } from "@auto-blogger/core";
 import { createChildLogger } from "@auto-blogger/core";
+import { withRetry, getCircuitBreaker } from "../retry.js";
 
 const logger = createChildLogger({ module: "data-ingestion:rss" });
-const parser = new Parser();
+const parser = new Parser({ timeout: 15_000 });
 
 export interface RssProviderConfig {
   url: string;
@@ -11,7 +12,7 @@ export interface RssProviderConfig {
 }
 
 /**
- * Fetch and parse RSS feed, returning normalized source materials.
+ * Fetch and parse RSS feed with retry and circuit breaking.
  */
 export async function fetchRssData(
   config: RssProviderConfig,
@@ -19,7 +20,16 @@ export async function fetchRssData(
 ): Promise<SourceMaterial[]> {
   logger.info({ url: config.url }, "Fetching RSS feed");
 
-  const feed = await parser.parseURL(config.url);
+  const domain = extractDomain(config.url);
+  const cb = getCircuitBreaker(domain);
+  const feed = await cb.execute(
+    () => withRetry(
+      () => parser.parseURL(config.url),
+      `rss:${domain}`,
+      { maxAttempts: 3, initialDelayMs: 2000 }
+    ),
+    `rss:${domain}`
+  );
 
   const items = (feed.items ?? []).slice(0, config.maxItems);
 

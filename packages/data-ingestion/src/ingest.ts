@@ -3,12 +3,13 @@ import { createChildLogger } from "@auto-blogger/core";
 import { fetchApiData } from "./providers/api.js";
 import { fetchRssData } from "./providers/rss.js";
 import { fetchScrapeData } from "./providers/scrape.js";
+import { getCached, setCached, isDuplicate, markSeen } from "./cache.js";
 
 const logger = createChildLogger({ module: "data-ingestion" });
 
 /**
  * Ingest data from all configured sources for a channel.
- * Fetches from each source in parallel and returns all materials.
+ * Fetches from each source in parallel with caching and deduplication.
  */
 export async function ingestData(
   channelId: string,
@@ -20,7 +21,7 @@ export async function ingestData(
   );
 
   const results = await Promise.allSettled(
-    dataSources.map((source) => fetchSource(channelId, source))
+    dataSources.map((source) => fetchSourceWithCache(channelId, source))
   );
 
   const materials: SourceMaterial[] = [];
@@ -39,12 +40,72 @@ export async function ingestData(
     );
   }
 
+  // Deduplicate: skip materials we've already processed recently
+  const fresh: SourceMaterial[] = [];
+  for (const material of materials) {
+    const dup = await isDuplicate(channelId, material.content);
+    if (dup) {
+      logger.debug(
+        { provider: material.provider, title: material.title },
+        "Skipping duplicate source material"
+      );
+      continue;
+    }
+    await markSeen(channelId, material.content);
+    fresh.push(material);
+  }
+
+  // If all materials were duplicates, use them anyway (better than nothing)
+  const final = fresh.length > 0 ? fresh : materials;
+
   logger.info(
-    { channelId, materialCount: materials.length },
+    {
+      channelId,
+      totalFetched: materials.length,
+      afterDedup: fresh.length,
+      used: final.length,
+    },
     "Data ingestion complete"
   );
 
+  return final;
+}
+
+async function fetchSourceWithCache(
+  channelId: string,
+  source: DataSource
+): Promise<SourceMaterial[]> {
+  // Build a cache identifier from the source config
+  const cacheId = buildCacheId(source);
+
+  // Check cache first
+  const cached = await getCached<SourceMaterial[]>(source.type, cacheId);
+  if (cached) {
+    logger.info(
+      { type: source.type, cacheId: cacheId.slice(0, 50) },
+      "Using cached source data"
+    );
+    return cached;
+  }
+
+  // Fetch fresh data
+  const materials = await fetchSource(channelId, source);
+
+  // Cache the result
+  await setCached(source.type, cacheId, materials);
+
   return materials;
+}
+
+function buildCacheId(source: DataSource): string {
+  switch (source.type) {
+    case "api":
+      return `${source.provider}:${source.endpoint}:${JSON.stringify(source.params ?? {})}`;
+    case "rss":
+      return source.url;
+    case "scrape":
+      return `${source.url}:${source.selector}`;
+  }
 }
 
 async function fetchSource(

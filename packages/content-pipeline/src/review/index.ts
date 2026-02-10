@@ -18,6 +18,11 @@ export { runEditorReview } from "./editor.js";
 export { runFactCheckerReview } from "./fact-checker.js";
 export { runEngagementReview } from "./engagement.js";
 export { runAiDetectionReview } from "./ai-detection.js";
+export {
+  checkExternalAiDetection,
+  passesExternalDetection,
+  type ExternalDetectionResult,
+} from "./external-ai-detection.js";
 
 /**
  * Run all 4 review agents in parallel and aggregate results.
@@ -76,26 +81,37 @@ export async function runReviewStage(
 
 function aggregateAllScores(
   results: ReviewAgentResult[],
-  config: ChannelConfig
+  _config: ChannelConfig
 ): ReviewScores {
-  const allScores: Record<string, number> = {};
+  // Each score key is owned by a specific agent. If multiple agents report
+  // the same key, take the minimum (most conservative) score.
+  const scoreMap = new Map<string, number[]>();
 
   for (const result of results) {
     for (const [key, value] of Object.entries(result.scores)) {
-      allScores[key] = value;
+      const existing = scoreMap.get(key) ?? [];
+      existing.push(value);
+      scoreMap.set(key, existing);
     }
   }
 
-  // Map to the canonical ReviewScores shape, using defaults for missing scores
+  const resolve = (key: string, fallback: number): number => {
+    const values = scoreMap.get(key);
+    if (!values || values.length === 0) return fallback;
+    // Use minimum score when multiple agents report the same metric
+    // This is conservative — content must satisfy ALL agents
+    return Math.min(...values);
+  };
+
   return {
-    structure: allScores.structure ?? 7,
-    readability: allScores.readability ?? 7,
-    voiceMatch: allScores.voiceMatch ?? 7,
-    factualAccuracy: allScores.factualAccuracy ?? 7,
-    sourceCoverage: allScores.sourceCoverage ?? 7,
-    hookStrength: allScores.hookStrength ?? 7,
-    engagementPotential: allScores.engagementPotential ?? 7,
-    naturalness: allScores.naturalness ?? 7,
-    perplexityVariance: allScores.perplexityVariance ?? 7,
+    structure: resolve("structure", 5),
+    readability: resolve("readability", 5),
+    voiceMatch: resolve("voiceMatch", 5),
+    factualAccuracy: resolve("factualAccuracy", 5),
+    sourceCoverage: resolve("sourceCoverage", 5),
+    hookStrength: resolve("hookStrength", 5),
+    engagementPotential: resolve("engagementPotential", 5),
+    naturalness: resolve("naturalness", 5),
+    perplexityVariance: resolve("perplexityVariance", 5),
   };
 }

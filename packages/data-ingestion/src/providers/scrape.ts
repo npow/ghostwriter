@@ -1,6 +1,7 @@
 import * as cheerio from "cheerio";
 import type { SourceMaterial } from "@auto-blogger/core";
 import { createChildLogger } from "@auto-blogger/core";
+import { withRetry, getCircuitBreaker } from "../retry.js";
 
 const logger = createChildLogger({ module: "data-ingestion:scrape" });
 
@@ -12,7 +13,7 @@ export interface ScrapeProviderConfig {
 }
 
 /**
- * Scrape web content using either static fetch + Cheerio or dynamic Playwright.
+ * Scrape web content with retry and circuit breaking.
  */
 export async function fetchScrapeData(
   config: ScrapeProviderConfig,
@@ -23,9 +24,16 @@ export async function fetchScrapeData(
     "Scraping web content"
   );
 
-  const html = config.dynamic
-    ? await fetchDynamic(config)
-    : await fetchStatic(config.url);
+  const domain = extractDomain(config.url);
+  const cb = getCircuitBreaker(domain);
+  const html = await cb.execute(
+    () => withRetry(
+      () => config.dynamic ? fetchDynamic(config) : fetchStatic(config.url),
+      `scrape:${domain}`,
+      { maxAttempts: 2, initialDelayMs: 3000 }
+    ),
+    `scrape:${domain}`
+  );
 
   const $ = cheerio.load(html);
   const elements = $(config.selector);

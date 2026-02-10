@@ -46,14 +46,17 @@ WRITING STYLE:
 ${styleConstraints}
 
 ANTI-SLOP RULES (CRITICAL):
-1. NEVER use any of these AI-typical phrases: ${forbiddenPhrases.slice(0, 30).join(", ")}
+1. NEVER use any of these AI-typical phrases (this is a COMPLETE list — every single one is banned):
+${forbiddenPhrases.map((p) => `   - "${p}"`).join("\n")}
 2. ONLY state facts that appear in the Research Brief below. Do NOT invent or hallucinate ANY information.
-3. Vary your sentence lengths dramatically — mix 5-word punches with 30+ word flowing sentences.
-4. Vary paragraph lengths — some should be 1 sentence, others 4-5 sentences.
+3. Vary your sentence lengths dramatically — mix 5-word punches with 30+ word flowing sentences. Aim for a coefficient of variation above 0.6 in sentence word counts.
+4. Vary paragraph lengths — some should be 1 sentence, others 4-5 sentences. Never have 3+ consecutive paragraphs of similar length.
 5. Use contractions naturally (don't, won't, can't — not "do not", "will not").
-6. Start sentences in different ways — never start 3 consecutive sentences the same way.
-7. Include at least one sentence fragment or incomplete thought (as humans do).
+6. Start sentences in different ways — never start 3 consecutive sentences the same way. Mix declarative, interrogative, imperative, and fragments.
+7. Include at least 2-3 sentence fragments or incomplete thoughts scattered throughout (as humans do). Example: "Wild stuff." or "Not even close."
 8. Write like you're talking to a friend who's smart but not an expert.
+9. Avoid the 5-paragraph essay structure. Don't mirror section lengths. Some sections should be 2 sentences, others 8+.
+10. Never use a numbered list of "key takeaways" or "key points" — weave insights into the narrative instead.
 
 ${revision ? `REVISION ${revision.number}: Address this feedback:\n${revision.feedback.map((f) => `- ${f}`).join("\n")}` : ""}
 

@@ -1,5 +1,6 @@
 import type { SourceMaterial } from "@auto-blogger/core";
 import { createChildLogger } from "@auto-blogger/core";
+import { withRetry, getRateLimiter, getCircuitBreaker } from "../retry.js";
 
 const logger = createChildLogger({ module: "data-ingestion:api" });
 
@@ -12,7 +13,7 @@ export interface ApiProviderConfig {
 }
 
 /**
- * Fetch data from an API endpoint and return normalized source materials.
+ * Fetch data from an API endpoint with retry, rate limiting, and circuit breaking.
  */
 export async function fetchApiData(
   config: ApiProviderConfig,
@@ -31,22 +32,51 @@ export async function fetchApiData(
     "Fetching API data"
   );
 
-  const response = await fetch(url.toString(), {
-    headers: {
-      Accept: "application/json",
-      ...config.headers,
-    },
-  });
+  // Apply rate limiting
+  const limiter = getRateLimiter(
+    config.provider,
+    config.rateLimit?.requestsPerMinute ?? 60
+  );
+  await limiter.acquire();
 
-  if (!response.ok) {
-    throw new Error(
-      `API request failed: ${response.status} ${response.statusText}`
-    );
-  }
+  // Execute with circuit breaker and retry
+  const cb = getCircuitBreaker(config.provider);
+  const data = await cb.execute(
+    () =>
+      withRetry(
+        async () => {
+          const response = await fetch(url.toString(), {
+            headers: {
+              Accept: "application/json",
+              ...config.headers,
+            },
+            signal: AbortSignal.timeout(30_000),
+          });
 
-  const data = await response.json();
+          if (response.status === 429) {
+            const retryAfter = response.headers.get("retry-after");
+            const waitMs = retryAfter ? parseInt(retryAfter) * 1000 : 5000;
+            logger.warn(
+              { provider: config.provider, waitMs },
+              "Rate limited, will retry"
+            );
+            throw new Error(`Rate limited (429) — retry after ${waitMs}ms`);
+          }
 
-  // Normalize based on common API response shapes
+          if (!response.ok) {
+            throw new Error(
+              `API request failed: ${response.status} ${response.statusText}`
+            );
+          }
+
+          return response.json();
+        },
+        `api:${config.provider}`,
+        { maxAttempts: 3, initialDelayMs: 2000 }
+      ),
+    `api:${config.provider}`
+  );
+
   const items = normalizeApiResponse(data, config.provider);
 
   return items.map((item, idx) => ({
@@ -74,7 +104,6 @@ function normalizeApiResponse(
   data: unknown,
   provider: string
 ): NormalizedItem[] {
-  // Provider-specific normalizers
   switch (provider) {
     case "polygon":
       return normalizePolygon(data);

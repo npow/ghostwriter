@@ -9,12 +9,17 @@ import type {
 import { createChildLogger } from "@auto-blogger/core";
 import {
   runResearchStage,
+  runDifferentiationStage,
+  applyDifferentiation,
   runOutlineStage,
   runDraftStage,
   runPolishStage,
+  runSeoStage,
   runAdaptStage,
 } from "./stages/index.js";
-import { runReviewStage } from "./review/index.js";
+import { runReviewStage, runFactCheckerReview } from "./review/index.js";
+import type { SeoResult } from "./stages/seo.js";
+import type { DifferentiationBrief } from "./stages/differentiate.js";
 
 const logger = createChildLogger({ module: "content-pipeline" });
 
@@ -23,6 +28,8 @@ export interface PipelineResult {
   draft: ContentDraft;
   review: ReviewResult;
   adaptations: PlatformContent[];
+  seo?: SeoResult;
+  differentiation?: DifferentiationBrief;
   totalCost: number;
   revisions: number;
   passed: boolean;
@@ -35,7 +42,8 @@ export interface PipelineCallbacks {
 }
 
 /**
- * Run the full content pipeline: Research → Outline → Draft → Review → Polish → Adapt
+ * Run the full content pipeline:
+ * Research → Differentiate → Outline → Draft → Review → Polish → SEO → Adapt
  */
 export async function runPipeline(
   config: ChannelConfig,
@@ -44,9 +52,12 @@ export async function runPipeline(
     fingerprint?: StyleFingerprint;
     callbacks?: PipelineCallbacks;
     skipAdapt?: boolean;
+    skipSeo?: boolean;
+    skipDifferentiation?: boolean;
   }
 ): Promise<PipelineResult> {
-  const { fingerprint, callbacks, skipAdapt } = options ?? {};
+  const { fingerprint, callbacks, skipAdapt, skipSeo, skipDifferentiation } =
+    options ?? {};
   let totalCost = 0;
 
   // Stage 1: Research
@@ -55,13 +66,28 @@ export async function runPipeline(
   totalCost += researchCost;
   callbacks?.onStageComplete?.("research", researchCost);
 
-  // Stage 2: Outline
+  // Stage 2: Differentiation (find content gaps and contrarian angles)
+  let differentiation: DifferentiationBrief | undefined;
+  if (!skipDifferentiation) {
+    callbacks?.onStageStart?.("differentiate");
+    const diffResult = await runDifferentiationStage(config, brief);
+    differentiation = diffResult.differentiation;
+    totalCost += diffResult.cost;
+    callbacks?.onStageComplete?.("differentiate", diffResult.cost);
+  }
+
+  // Stage 3: Outline
   callbacks?.onStageStart?.("outline");
-  const { outline, cost: outlineCost } = await runOutlineStage(config, brief);
+  let { outline, cost: outlineCost } = await runOutlineStage(config, brief);
   totalCost += outlineCost;
   callbacks?.onStageComplete?.("outline", outlineCost);
 
-  // Stage 3: Draft
+  // Apply differentiation insights to the outline
+  if (differentiation) {
+    outline = applyDifferentiation(outline, differentiation);
+  }
+
+  // Stage 4: Draft
   callbacks?.onStageStart?.("draft");
   let { draft, cost: draftCost } = await runDraftStage(
     config,
@@ -72,9 +98,9 @@ export async function runPipeline(
   totalCost += draftCost;
   callbacks?.onStageComplete?.("draft", draftCost);
 
-  // Stage 4: Review + Revision Loop
+  // Stage 5: Review + Revision Loop
   const maxRevisions = config.qualityGate.maxRevisions;
-  let review: ReviewResult;
+  let review: ReviewResult | undefined;
   let revisionCount = 0;
 
   for (let i = 0; i <= maxRevisions; i++) {
@@ -114,9 +140,47 @@ export async function runPipeline(
     draft = polished;
     totalCost += polishCost;
     callbacks?.onStageComplete?.("polish", polishCost);
+
+    // Re-run fact-checker on polished content to catch introduced hallucinations
+    callbacks?.onStageStart?.("fact-check-post-polish");
+    const factCheck = await runFactCheckerReview(config, draft, brief);
+    totalCost += factCheck.cost;
+    callbacks?.onStageComplete?.("fact-check-post-polish", factCheck.cost);
+
+    if (!factCheck.result.passed) {
+      logger.warn(
+        { channelId: config.id, revision: revisionCount },
+        "Polish introduced factual issues, feedback will be included in next review"
+      );
+    }
   }
 
-  // Stage 5: Adapt for platforms
+  if (!review) {
+    throw new Error(
+      "Review stage did not execute — check qualityGate.maxRevisions"
+    );
+  }
+
+  // Stage 6: SEO Optimization (after quality gate, so we don't SEO-ify bad content)
+  let seo: SeoResult | undefined;
+  if (!skipSeo && review.passed) {
+    callbacks?.onStageStart?.("seo");
+    const seoResult = await runSeoStage(config, draft);
+    seo = seoResult.seo;
+    totalCost += seoResult.cost;
+    callbacks?.onStageComplete?.("seo", seoResult.cost);
+
+    // Use the SEO-optimized content for adaptation
+    if (seo.optimizedContent) {
+      draft = {
+        ...draft,
+        content: seo.optimizedContent,
+        headline: seo.metaTitle || draft.headline,
+      };
+    }
+  }
+
+  // Stage 7: Adapt for platforms
   let adaptations: PlatformContent[] = [];
   if (!skipAdapt) {
     callbacks?.onStageStart?.("adapt");
@@ -129,10 +193,12 @@ export async function runPipeline(
   return {
     channelId: config.id,
     draft,
-    review: review!,
+    review,
     adaptations,
+    seo,
+    differentiation,
     totalCost,
     revisions: revisionCount,
-    passed: review!.passed,
+    passed: review.passed,
   };
 }
