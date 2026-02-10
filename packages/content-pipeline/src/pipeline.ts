@@ -54,9 +54,10 @@ export async function runPipeline(
     skipAdapt?: boolean;
     skipSeo?: boolean;
     skipDifferentiation?: boolean;
+    performanceContext?: string;
   }
 ): Promise<PipelineResult> {
-  const { fingerprint, callbacks, skipAdapt, skipSeo, skipDifferentiation } =
+  const { fingerprint, callbacks, skipAdapt, skipSeo, skipDifferentiation, performanceContext } =
     options ?? {};
   let totalCost = 0;
 
@@ -87,13 +88,15 @@ export async function runPipeline(
     outline = applyDifferentiation(outline, differentiation);
   }
 
-  // Stage 4: Draft
+  // Stage 4: Draft (with performance insights from past content)
   callbacks?.onStageStart?.("draft");
   let { draft, cost: draftCost } = await runDraftStage(
     config,
     brief,
     outline,
-    fingerprint
+    fingerprint,
+    undefined,
+    performanceContext
   );
   totalCost += draftCost;
   callbacks?.onStageComplete?.("draft", draftCost);

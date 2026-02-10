@@ -11,6 +11,8 @@ const {
   loadConfig,
   ingestSources,
   loadStyleFingerprint,
+  syncChannelAnalytics,
+  getPerformanceContext,
   runContentPipeline,
   publishContent,
 } = proxyActivities<typeof activities>({
@@ -35,7 +37,7 @@ interface WorkflowStatus {
 
 /**
  * Main content generation workflow.
- * Orchestrates: Config → Ingest → Pipeline → Publish
+ * Orchestrates: Analytics Sync → Config → Ingest → Pipeline (with insights) → Publish
  */
 export async function contentGenerationWorkflow(
   channelId: string,
@@ -65,21 +67,33 @@ export async function contentGenerationWorkflow(
     const config = await loadConfig(channelId);
     if (cancelled) return { success: false, error: "Cancelled", totalCost: 0 };
 
-    // Step 2: Ingest data
+    // Step 2: Sync analytics from platforms (non-blocking — failures are OK)
+    currentStatus.stage = "syncing_analytics";
+    let performanceContext = "";
+    try {
+      await syncChannelAnalytics(channelId);
+      performanceContext = await getPerformanceContext(channelId);
+    } catch {
+      // Analytics sync is best-effort — don't block content generation
+    }
+    if (cancelled) return { success: false, error: "Cancelled", totalCost: 0 };
+
+    // Step 3: Ingest data
     currentStatus.stage = "ingesting_data";
     const sources = await ingestSources(channelId, config.dataSources);
     if (cancelled) return { success: false, error: "Cancelled", totalCost: 0 };
 
-    // Step 3: Load style fingerprint
+    // Step 4: Load style fingerprint
     currentStatus.stage = "loading_style";
     const fingerprint = await loadStyleFingerprint(config);
 
-    // Step 4: Run content pipeline
+    // Step 5: Run content pipeline (with performance insights injected)
     currentStatus.stage = "generating_content";
     const pipelineResult = await runContentPipeline(
       config,
       sources,
-      fingerprint
+      fingerprint,
+      performanceContext
     );
 
     if (!pipelineResult.passed) {
@@ -92,7 +106,7 @@ export async function contentGenerationWorkflow(
       };
     }
 
-    // Step 5: Publish (skip in dry-run mode)
+    // Step 6: Publish (skip in dry-run mode)
     if (dryRun) {
       currentStatus.stage = "completed_dry_run";
       return {

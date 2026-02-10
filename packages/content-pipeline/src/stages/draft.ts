@@ -19,7 +19,8 @@ export async function runDraftStage(
   brief: ResearchBrief,
   outline: ContentOutline,
   fingerprint?: StyleFingerprint,
-  revision?: { number: number; feedback: string[] }
+  revision?: { number: number; feedback: string[] },
+  performanceContext?: string
 ): Promise<{ draft: ContentDraft; cost: number }> {
   logger.info(
     { channelId: config.id, revision: revision?.number ?? 0 },
@@ -60,6 +61,7 @@ ${forbiddenPhrases.map((p) => `   - "${p}"`).join("\n")}
 
 ${revision ? `REVISION ${revision.number}: Address this feedback:\n${revision.feedback.map((f) => `- ${f}`).join("\n")}` : ""}
 
+${performanceContext ? `\n${performanceContext}\n` : ""}
 Write the full ${config.contentType} in markdown format. Target: ${config.targetWordCount} words.`;
 
   const userPrompt = `RESEARCH BRIEF:

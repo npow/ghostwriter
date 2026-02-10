@@ -13,6 +13,11 @@ import {
   analyzeStyleFingerprint,
 } from "@auto-blogger/content-pipeline";
 import { publishAll } from "@auto-blogger/publishing";
+import {
+  syncAnalytics,
+  generatePerformanceInsights,
+  formatInsightsForPrompt,
+} from "@auto-blogger/monitoring";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { getChannelsDir } from "@auto-blogger/core";
@@ -55,12 +60,34 @@ export async function loadStyleFingerprint(
   return analyzeStyleFingerprint(config.id, exampleTexts);
 }
 
+/**
+ * Sync analytics from platform APIs for a channel's published content.
+ * Call this before generating new content to have fresh engagement data.
+ */
+export async function syncChannelAnalytics(
+  channelId: string
+): Promise<number> {
+  return syncAnalytics(channelId);
+}
+
+/**
+ * Generate performance insights for a channel based on historical analytics.
+ * Returns a formatted string to inject into the draft prompt.
+ */
+export async function getPerformanceContext(
+  channelId: string
+): Promise<string> {
+  const insights = await generatePerformanceInsights(channelId);
+  return formatInsightsForPrompt(insights);
+}
+
 export async function runContentPipeline(
   config: ChannelConfig,
   sources: SourceMaterial[],
-  fingerprint?: StyleFingerprint
+  fingerprint?: StyleFingerprint,
+  performanceContext?: string
 ): Promise<PipelineResult> {
-  return runPipeline(config, sources, { fingerprint });
+  return runPipeline(config, sources, { fingerprint, performanceContext });
 }
 
 export async function publishContent(

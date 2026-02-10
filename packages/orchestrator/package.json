@@ -18,6 +18,7 @@
     "@auto-blogger/data-ingestion": "workspace:*",
     "@auto-blogger/content-pipeline": "workspace:*",
     "@auto-blogger/publishing": "workspace:*",
+    "@auto-blogger/monitoring": "workspace:*",
     "@temporalio/client": "^1.11.0",
     "@temporalio/worker": "^1.11.0",
     "@temporalio/workflow": "^1.11.0",

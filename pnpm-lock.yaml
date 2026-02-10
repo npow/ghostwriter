@@ -200,6 +200,9 @@ importers:
       '@auto-blogger/database':
         specifier: workspace:*
         version: link:../database
+      '@auto-blogger/monitoring':
+        specifier: workspace:*
+        version: link:../monitoring
       '@auto-blogger/publishing':
         specifier: workspace:*
         version: link:../publishing
