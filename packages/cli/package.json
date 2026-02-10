@@ -22,6 +22,7 @@
     "@auto-blogger/monitoring": "workspace:*",
     "commander": "^13.0.0",
     "inquirer": "^12.3.0",
+    "@inquirer/prompts": "^7.0.0",
     "chalk": "^5.4.0",
     "ora": "^8.1.0",
     "cli-table3": "^0.6.5"

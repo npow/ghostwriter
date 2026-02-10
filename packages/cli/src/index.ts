@@ -7,6 +7,7 @@ import { runCommand } from "./commands/run.js";
 import { statusCommand } from "./commands/status.js";
 import { listCommand } from "./commands/list.js";
 import { logsCommand } from "./commands/logs.js";
+import { connectCommand } from "./commands/connect.js";
 
 const program = new Command();
 
@@ -46,6 +47,11 @@ program
   .description("Show recent pipeline logs")
   .option("-n, --lines <number>", "Number of log entries", "20")
   .action(logsCommand);
+
+program
+  .command("connect [platform]")
+  .description("Connect a publishing platform (wordpress, ghost, twitter)")
+  .action(connectCommand);
 
 program
   .command("dashboard")

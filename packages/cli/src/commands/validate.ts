@@ -62,6 +62,23 @@ export async function validateCommand(channelName: string) {
             hasErrors = true;
           }
           break;
+
+        case "wordpress":
+          if (
+            (target.url || env.wordpressUrl) &&
+            (target.username || env.wordpressUsername) &&
+            (target.password || env.wordpressPassword)
+          ) {
+            console.log(chalk.green("  [PASS] WordPress credentials found"));
+          } else {
+            console.log(
+              chalk.red(
+                "  [FAIL] WordPress credentials missing — run: auto_blogger connect wordpress"
+              )
+            );
+            hasErrors = true;
+          }
+          break;
       }
     }
 
