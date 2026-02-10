@@ -65,4 +65,13 @@ export const env = {
   get buzzsproutPodcastId() {
     return process.env.BUZZSPROUT_PODCAST_ID;
   },
+  get wordpressUrl() {
+    return process.env.WORDPRESS_URL;
+  },
+  get wordpressUsername() {
+    return process.env.WORDPRESS_USERNAME;
+  },
+  get wordpressPassword() {
+    return process.env.WORDPRESS_APP_PASSWORD;
+  },
 };

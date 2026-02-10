@@ -85,6 +85,8 @@ async function fetchPlatformAnalytics(pub: {
       return fetchGhostAnalytics(pub.id, pub.channelId, pub.platformId);
     case "twitter":
       return fetchTwitterAnalytics(pub.id, pub.channelId, pub.platformId);
+    case "wordpress":
+      return fetchWordPressAnalytics(pub.id, pub.channelId, pub.platformId);
     default:
       return null;
   }
@@ -246,6 +248,81 @@ async function fetchTwitterAnalytics(
     logger.debug(
       { tweetId, error: err instanceof Error ? err.message : String(err) },
       "Twitter analytics fetch failed"
+    );
+    return null;
+  }
+}
+
+/**
+ * Fetch post analytics from WordPress REST API.
+ * Gets comment count via the comments endpoint (X-WP-Total header).
+ * Views are not available in core WordPress REST API — requires Jetpack or
+ * WP Statistics plugin with REST extensions.
+ */
+async function fetchWordPressAnalytics(
+  publicationId: string,
+  channelId: string,
+  postId: string
+): Promise<AnalyticsSnapshot | null> {
+  const wpUrl = process.env.WORDPRESS_URL;
+  const wpUser = process.env.WORDPRESS_USERNAME;
+  const wpPass = process.env.WORDPRESS_APP_PASSWORD;
+  if (!wpUrl || !wpUser || !wpPass) return null;
+
+  try {
+    const baseUrl = wpUrl.replace(/\/$/, "");
+    const credentials = Buffer.from(`${wpUser}:${wpPass}`).toString("base64");
+    const authHeader = `Basic ${credentials}`;
+
+    // Fetch comment count via X-WP-Total header
+    const commentsResp = await fetch(
+      `${baseUrl}/wp-json/wp/v2/comments?post=${postId}&per_page=1`,
+      {
+        headers: { Authorization: authHeader },
+        signal: AbortSignal.timeout(10_000),
+      }
+    );
+
+    let comments = 0;
+    if (commentsResp.ok) {
+      comments = parseInt(
+        commentsResp.headers.get("X-WP-Total") ?? "0",
+        10
+      );
+    }
+
+    // Try Jetpack Stats if available (optional)
+    let views = 0;
+    try {
+      const statsResp = await fetch(
+        `${baseUrl}/wp-json/wpcom/v2/stats/post/${postId}`,
+        {
+          headers: { Authorization: authHeader },
+          signal: AbortSignal.timeout(10_000),
+        }
+      );
+      if (statsResp.ok) {
+        const stats = (await statsResp.json()) as { views?: number };
+        views = stats.views ?? 0;
+      }
+    } catch {
+      // Jetpack Stats not available — that's fine
+    }
+
+    return {
+      publicationId,
+      channelId,
+      platform: "wordpress",
+      views,
+      clicks: 0,
+      shares: 0,
+      likes: 0,
+      comments,
+    };
+  } catch (err) {
+    logger.debug(
+      { postId, error: err instanceof Error ? err.message : String(err) },
+      "WordPress analytics fetch failed"
     );
     return null;
   }

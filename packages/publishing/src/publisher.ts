@@ -7,6 +7,7 @@ import { env, createChildLogger } from "@auto-blogger/core";
 import { publishToGhost } from "./adapters/ghost.js";
 import { publishToTwitter } from "./adapters/twitter.js";
 import { publishToPodcast } from "./adapters/podcast.js";
+import { publishToWordPress } from "./adapters/wordpress.js";
 import {
   generateIdempotencyKey,
   isAlreadyPublished,
@@ -162,6 +163,28 @@ async function publishOne(
         apiToken: env.buzzsproutApiToken,
         podcastId: env.buzzsproutPodcastId,
         elevenLabsApiKey: env.elevenLabsApiKey,
+      });
+    }
+
+    case "wordpress": {
+      const target = config.publishTargets.find(
+        (t) => t.platform === "wordpress"
+      );
+      if (!target || target.platform !== "wordpress") {
+        throw new Error("WordPress target not configured");
+      }
+      const wpUrl = target.url || env.wordpressUrl;
+      const wpUser = target.username || env.wordpressUsername;
+      const wpPass = target.password || env.wordpressPassword;
+      if (!wpUrl || !wpUser || !wpPass) {
+        throw new Error(
+          "WordPress URL, username, and application password are required"
+        );
+      }
+      return publishToWordPress(content, {
+        url: wpUrl,
+        username: wpUser,
+        password: wpPass,
       });
     }
 
