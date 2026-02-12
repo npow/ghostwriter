@@ -14,6 +14,8 @@
   },
   "dependencies": {
     "@auto-blogger/core": "workspace:*",
+    "@auto-blogger/site-setup": "workspace:*",
+    "@auto-blogger/style-fingerprint": "workspace:*",
     "@auto-blogger/database": "workspace:*",
     "@auto-blogger/data-ingestion": "workspace:*",
     "@auto-blogger/content-pipeline": "workspace:*",
@@ -25,7 +27,8 @@
     "@inquirer/prompts": "^7.0.0",
     "chalk": "^5.4.0",
     "ora": "^8.1.0",
-    "cli-table3": "^0.6.5"
+    "cli-table3": "^0.6.5",
+    "yaml": "^2.7.0"
   },
   "devDependencies": {
     "typescript": "^5.7.0",

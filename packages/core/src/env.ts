@@ -74,4 +74,7 @@ export const env = {
   get wordpressPassword() {
     return process.env.WORDPRESS_APP_PASSWORD;
   },
+  get geminiApiKey() {
+    return process.env.GEMINI_API_KEY;
+  },
 };

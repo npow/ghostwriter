@@ -7,6 +7,8 @@
   "include": ["src/**/*"],
   "references": [
     { "path": "../core" },
+    { "path": "../site-setup" },
+    { "path": "../style-fingerprint" },
     { "path": "../database" },
     { "path": "../data-ingestion" },
     { "path": "../content-pipeline" },

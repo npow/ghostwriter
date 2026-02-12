@@ -8,6 +8,8 @@ import { statusCommand } from "./commands/status.js";
 import { listCommand } from "./commands/list.js";
 import { logsCommand } from "./commands/logs.js";
 import { connectCommand } from "./commands/connect.js";
+import { fingerprintCommand } from "./commands/fingerprint.js";
+import { createCommand } from "./commands/create/index.js";
 
 const program = new Command();
 
@@ -50,8 +52,22 @@ program
 
 program
   .command("connect [platform]")
-  .description("Connect a publishing platform (wordpress, ghost, twitter)")
+  .description("Connect a publishing platform (wordpress, wordpress-com, ghost, twitter)")
   .action(connectCommand);
+
+program
+  .command("fingerprint <input>")
+  .description("Analyze writing style from a URL or file")
+  .option("-o, --output <format>", "Output format: json, prompt, detailed, compact", "prompt")
+  .action(fingerprintCommand);
+
+program
+  .command("create [description...]")
+  .description("Create a channel from a natural language description")
+  .option("--interactive", "Pause for confirmation at each step", false)
+  .option("--no-site-setup", "Skip WordPress site configuration")
+  .option("--dry-run", "Show what would be created without writing", false)
+  .action(createCommand);
 
 program
   .command("dashboard")

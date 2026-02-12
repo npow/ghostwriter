@@ -14,9 +14,16 @@ function getClient(): Anthropic {
 
 export type ModelTier = "opus" | "sonnet";
 
+type Provider = "anthropic" | "gemini";
+
 const MODEL_MAP: Record<ModelTier, string> = {
   opus: "claude-opus-4-6",
   sonnet: "claude-sonnet-4-5-20250929",
+};
+
+const GEMINI_MODEL_MAP: Record<ModelTier, string> = {
+  sonnet: "gemini-2.0-flash",
+  opus: "gemini-2.5-pro",
 };
 
 export interface LlmCallResult {
@@ -31,7 +38,75 @@ export interface LlmCallResult {
 const PRICING: Record<string, { input: number; output: number }> = {
   "claude-opus-4-6": { input: 15, output: 75 },
   "claude-sonnet-4-5-20250929": { input: 3, output: 15 },
+  "gemini-2.0-flash": { input: 0.1, output: 0.4 },
+  "gemini-2.5-pro": { input: 1.25, output: 5 },
 };
+
+function detectProvider(): Provider {
+  if (process.env.ANTHROPIC_API_KEY) return "anthropic";
+  if (process.env.GEMINI_API_KEY) return "gemini";
+  throw new Error(
+    "No LLM API key found. Set ANTHROPIC_API_KEY or GEMINI_API_KEY."
+  );
+}
+
+async function callGemini(
+  tier: ModelTier,
+  systemPrompt: string,
+  userPrompt: string,
+  options?: { maxTokens?: number; temperature?: number }
+): Promise<LlmCallResult> {
+  const apiKey = process.env.GEMINI_API_KEY!;
+  const model = GEMINI_MODEL_MAP[tier];
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+
+  logger.debug({ model, systemLength: systemPrompt.length }, "Calling Gemini");
+
+  const body = {
+    system_instruction: { parts: [{ text: systemPrompt }] },
+    contents: [{ role: "user", parts: [{ text: userPrompt }] }],
+    generationConfig: {
+      temperature: options?.temperature ?? 1,
+      maxOutputTokens: options?.maxTokens ?? 8192,
+    },
+  };
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`Gemini API error ${response.status}: ${text}`);
+  }
+
+  const data = (await response.json()) as {
+    candidates?: Array<{
+      content?: { parts?: Array<{ text?: string }> };
+    }>;
+    usageMetadata?: {
+      promptTokenCount?: number;
+      candidatesTokenCount?: number;
+    };
+  };
+
+  const content =
+    data.candidates?.[0]?.content?.parts
+      ?.map((p) => p.text ?? "")
+      .join("\n") ?? "";
+
+  const inputTokens = data.usageMetadata?.promptTokenCount ?? 0;
+  const outputTokens = data.usageMetadata?.candidatesTokenCount ?? 0;
+  const pricing = PRICING[model] ?? { input: 1, output: 5 };
+  const cost =
+    (inputTokens * pricing.input + outputTokens * pricing.output) / 1_000_000;
+
+  logger.debug({ model, inputTokens, outputTokens, cost }, "Gemini call complete");
+
+  return { content, inputTokens, outputTokens, model, cost };
+}
 
 export async function callLlm(
   tier: ModelTier,
@@ -39,6 +114,12 @@ export async function callLlm(
   userPrompt: string,
   options?: { maxTokens?: number; temperature?: number }
 ): Promise<LlmCallResult> {
+  const provider = detectProvider();
+
+  if (provider === "gemini") {
+    return callGemini(tier, systemPrompt, userPrompt, options);
+  }
+
   const client = getClient();
   const model = MODEL_MAP[tier];
 

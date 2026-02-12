@@ -2,10 +2,28 @@ node_modules/
 dist/
 .turbo/
 *.tsbuildinfo
+
+# Environment / secrets
 .env
 .env.local
 .env.*.local
-coverage/
-*.log
+
+# OS
 .DS_Store
+Thumbs.db
+
+# Editor
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Test / coverage
+coverage/
+
+# Logs
+*.log
+
+# Temp
 tmp/

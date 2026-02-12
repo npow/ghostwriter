@@ -7,15 +7,27 @@ import {
   loadConnections,
   type ConnectionEntry,
 } from "@auto-blogger/core";
+import {
+  buildAuthorizeUrl,
+  exchangeCodeForToken,
+  fetchCurrentUser,
+  fetchUserSites,
+  startCallbackServer,
+  generateState,
+  findAvailablePort,
+  type WpComOAuthConfig,
+  type WpComSite,
+} from "@auto-blogger/site-setup";
 
-type Platform = "wordpress" | "ghost" | "twitter";
+type Platform = "wordpress" | "wordpress-com" | "ghost" | "twitter";
 
 export async function connectCommand(platform?: string) {
   if (!platform) {
     platform = await select({
       message: "Which platform do you want to connect?",
       choices: [
-        { value: "wordpress", name: "WordPress" },
+        { value: "wordpress-com", name: "WordPress.com (OAuth)" },
+        { value: "wordpress", name: "WordPress (self-hosted)" },
         { value: "ghost", name: "Ghost CMS" },
         { value: "twitter", name: "Twitter / X" },
         { value: "list", name: "List existing connections" },
@@ -26,6 +38,9 @@ export async function connectCommand(platform?: string) {
   switch (platform) {
     case "wordpress":
       await connectWordPress();
+      break;
+    case "wordpress-com":
+      await connectWordPressCom();
       break;
     case "ghost":
       await connectGhost();
@@ -38,7 +53,7 @@ export async function connectCommand(platform?: string) {
       break;
     default:
       console.log(chalk.red(`\n  Unknown platform: ${platform}`));
-      console.log(`  Supported: wordpress, ghost, twitter\n`);
+      console.log(`  Supported: wordpress, wordpress-com, ghost, twitter\n`);
       process.exitCode = 1;
   }
 }
@@ -61,7 +76,11 @@ async function listConnections() {
 
 // ─── WordPress ─────────────────────────────────────────────────────────────
 
-async function connectWordPress() {
+/**
+ * Interactive WordPress connection setup.
+ * Exported so the `create` command can call it programmatically.
+ */
+export async function connectWordPress() {
   console.log(chalk.blue("\n  Connect WordPress\n"));
   console.log(
     chalk.dim(
@@ -272,6 +291,200 @@ async function connectWordPress() {
   console.log();
 }
 
+// ─── WordPress.com OAuth ────────────────────────────────────────────────────
+
+/**
+ * Interactive WordPress.com OAuth connection setup.
+ * Exported so the `create` command can call it programmatically.
+ */
+export async function connectWordPressCom(): Promise<
+  ConnectionEntry | undefined
+> {
+  console.log(chalk.blue("\n  Connect WordPress.com (OAuth)\n"));
+
+  // Step 1: Check env vars
+  const clientId = process.env.WPCOM_CLIENT_ID;
+  const clientSecret = process.env.WPCOM_CLIENT_SECRET;
+
+  if (!clientId || !clientSecret) {
+    console.log(
+      chalk.red("  Missing environment variables: WPCOM_CLIENT_ID and/or WPCOM_CLIENT_SECRET\n")
+    );
+    console.log(chalk.dim("  To set up a WordPress.com OAuth app:"));
+    console.log(chalk.dim("    1. Go to https://developer.wordpress.com/apps/"));
+    console.log(chalk.dim("    2. Create a new application"));
+    console.log(chalk.dim('    3. Set the redirect URL to "http://localhost:{port}/callback"'));
+    console.log(chalk.dim("    4. Export WPCOM_CLIENT_ID and WPCOM_CLIENT_SECRET\n"));
+    process.exitCode = 1;
+    return undefined;
+  }
+
+  // Step 2: Connection name
+  const existingWpCom = (await loadConnections()).filter(
+    (c) => c.platform === "wordpress-com"
+  );
+  const defaultName =
+    existingWpCom.length === 0
+      ? "wordpress-com"
+      : `wordpress-com-${existingWpCom.length + 1}`;
+
+  const connectionId = await input({
+    message: "Connection name (used as target ID in channel config):",
+    default: defaultName,
+    validate: (val) =>
+      /^[a-z0-9-]+$/.test(val) ||
+      "Use lowercase letters, numbers, and hyphens only",
+  });
+
+  // Step 3: Start local callback server
+  const port = await findAvailablePort();
+  const redirectUri = `http://localhost:${port}/callback`;
+  const config: WpComOAuthConfig = {
+    clientId,
+    clientSecret,
+    redirectUri,
+  };
+
+  const state = generateState();
+  const authorizeUrl = buildAuthorizeUrl(config, state);
+  const callbackPromise = startCallbackServer(port, state);
+
+  // Step 4: Open browser
+  const { exec } = await import("node:child_process");
+  const cmd =
+    process.platform === "darwin"
+      ? "open"
+      : process.platform === "win32"
+        ? "start"
+        : "xdg-open";
+  exec(`${cmd} "${authorizeUrl}"`);
+
+  console.log(chalk.dim("\n  Browser opened for authorization."));
+  console.log(chalk.dim("  If it didn't open, visit this URL:\n"));
+  console.log(`  ${chalk.cyan(authorizeUrl)}\n`);
+  console.log(chalk.dim("  Waiting for authorization..."));
+
+  // Step 5: Wait for callback
+  let callbackResult: { code: string; state: string };
+  try {
+    callbackResult = await callbackPromise;
+  } catch (err) {
+    console.log(
+      chalk.red(
+        `\n  Authorization failed: ${err instanceof Error ? err.message : String(err)}\n`
+      )
+    );
+    return undefined;
+  }
+
+  // Step 6: Exchange code for token
+  console.log(chalk.dim("  Exchanging authorization code for token..."));
+  let tokenResponse;
+  try {
+    tokenResponse = await exchangeCodeForToken(config, callbackResult.code);
+  } catch (err) {
+    console.log(
+      chalk.red(
+        `\n  Token exchange failed: ${err instanceof Error ? err.message : String(err)}\n`
+      )
+    );
+    return undefined;
+  }
+
+  // Step 7: Fetch user info
+  const user = await fetchCurrentUser(tokenResponse.access_token);
+  console.log(
+    chalk.green(
+      `  Authenticated as: ${user.display_name} (@${user.username})`
+    )
+  );
+
+  // Step 8: Fetch and select site
+  let sites = await fetchUserSites(tokenResponse.access_token);
+  let readySites = sites.filter((s) => s.visible && !s.is_coming_soon);
+
+  if (readySites.length === 0) {
+    console.log(
+      chalk.yellow("\n  No ready WordPress.com sites found on this account.")
+    );
+    const openSignup = await confirm({
+      message: "Open wordpress.com/start to create a site?",
+      default: true,
+    });
+    if (openSignup) {
+      exec(`${cmd} "https://wordpress.com/start"`);
+      console.log(
+        chalk.dim("  Create your site, then press Enter to continue.\n")
+      );
+    }
+    await input({ message: "Press Enter when ready..." });
+
+    // Re-fetch
+    sites = await fetchUserSites(tokenResponse.access_token);
+    readySites = sites.filter((s) => s.visible && !s.is_coming_soon);
+
+    if (readySites.length === 0) {
+      console.log(
+        chalk.red(
+          "\n  Still no sites found. Create a site and run this command again.\n"
+        )
+      );
+      return undefined;
+    }
+  }
+
+  let selectedSite: WpComSite;
+  if (readySites.length === 1) {
+    selectedSite = readySites[0];
+    console.log(
+      chalk.green(`  Auto-selected site: ${selectedSite.name} (${selectedSite.URL})`)
+    );
+  } else {
+    const siteUrl = await select({
+      message: "Which site do you want to connect?",
+      choices: readySites.map((s) => ({
+        value: s.URL,
+        name: `${s.name} — ${s.URL}`,
+      })),
+    });
+    selectedSite = readySites.find((s) => s.URL === siteUrl)!;
+  }
+
+  // Step 9: Save connection
+  const conn: ConnectionEntry = {
+    id: connectionId,
+    platform: "wordpress-com",
+    url: selectedSite.URL,
+    credentials: {
+      token: tokenResponse.access_token,
+    },
+    createdAt: new Date().toISOString(),
+  };
+
+  await saveConnection(conn);
+
+  console.log(chalk.green("\n  WordPress.com connected successfully!"));
+  console.log(
+    chalk.dim(
+      `  Saved as "${connectionId}" in ~/.auto-blogger/connections.json\n`
+    )
+  );
+
+  // Show config example
+  console.log("  Add this to your channel config:\n");
+  console.log(
+    chalk.cyan(
+      "  publishTargets:\n" +
+        `    - platform: wordpress\n` +
+        `      id: ${connectionId}\n` +
+        `      url: ${selectedSite.URL}\n`
+    )
+  );
+  console.log();
+
+  return conn;
+}
+
 // ─── Ghost ─────────────────────────────────────────────────────────────────
 
 async function connectGhost() {
@@ -452,7 +665,7 @@ async function connectTwitter() {
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
 
-async function checkWordPressApi(
+export async function checkWordPressApi(
   baseUrl: string
 ): Promise<
   | { ok: true; name: string; version: string }
@@ -491,7 +704,7 @@ async function checkWordPressApi(
   }
 }
 
-async function testWordPressAuth(
+export async function testWordPressAuth(
   baseUrl: string,
   username: string,
   appPassword: string

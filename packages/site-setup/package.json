@@ -1,5 +1,5 @@
 {
-  "name": "@auto-blogger/content-pipeline",
+  "name": "@auto-blogger/site-setup",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -12,10 +12,7 @@
     "clean": "rm -rf dist .turbo"
   },
   "dependencies": {
-    "@auto-blogger/core": "workspace:*",
-    "@auto-blogger/data-ingestion": "workspace:*",
-    "@auto-blogger/style-fingerprint": "workspace:*",
-    "@anthropic-ai/sdk": "^0.39.0"
+    "@auto-blogger/core": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.7.0",

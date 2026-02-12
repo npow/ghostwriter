@@ -6,8 +6,6 @@
   },
   "include": ["src/**/*"],
   "references": [
-    { "path": "../core" },
-    { "path": "../data-ingestion" },
-    { "path": "../style-fingerprint" }
+    { "path": "../core" }
   ]
 }

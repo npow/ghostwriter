@@ -215,9 +215,52 @@ async function publishOne(
     }
 
     case "wordpress": {
+      // Try both platform types when looking up connection
       const conn = target.id
-        ? await getConnection(target.id, "wordpress")
+        ? ((await getConnection(target.id, "wordpress")) ??
+          (await getConnection(target.id, "wordpress-com")))
         : undefined;
+
+      // WordPress.com OAuth: use bearer token + WP.com API
+      if (conn?.credentials?.token) {
+        const siteId = (conn.url ?? "")
+          .replace(/^https?:\/\//, "")
+          .replace(/\/$/, "");
+        const resp = await fetch(
+          `https://public-api.wordpress.com/wp/v2/sites/${siteId}/posts`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${conn.credentials.token}`,
+            },
+            body: JSON.stringify({
+              title:
+                (content.metadata?.headline as string) ?? "Untitled Post",
+              content: content.content,
+              status: "publish",
+            }),
+            signal: AbortSignal.timeout(30_000),
+          }
+        );
+        if (!resp.ok) {
+          const errorBody = await resp.text();
+          throw new Error(
+            `WordPress.com API error ${resp.status}: ${errorBody}`
+          );
+        }
+        const post = (await resp.json()) as { id: number; link: string };
+        return {
+          channelId: content.channelId,
+          platform: "wordpress",
+          success: true,
+          url: post.link,
+          platformId: String(post.id),
+          publishedAt: new Date().toISOString(),
+        };
+      }
+
+      // Existing basic auth path (self-hosted WordPress)
       const wpUrl =
         target.url ?? conn?.url ?? conn?.credentials?.url ?? env.wordpressUrl;
       const wpUser =
