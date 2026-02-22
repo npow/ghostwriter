@@ -1,30 +1,112 @@
 # Quill
 
-Autonomous AI content engine with anti-slop quality gates.
+**Describe what you want to publish. Quill handles the rest.**
 
-Quill turns a natural-language description into a fully configured content channel — ingests data sources, fingerprints your writing style, generates articles through a multi-stage LLM pipeline with quality review, and publishes to WordPress, Ghost, Twitter, and podcasts. All from one command.
+Content creators, solopreneurs, and small teams spend 5-10 hours per article researching, writing, editing, and publishing across platforms. Most AI writing tools produce generic slop that readers immediately recognize as machine-generated.
+
+Quill is an autonomous content engine that generates high-quality, on-brand content from real data sources — and actually sounds like you.
 
 ```
 quill create "a weekly tech blog about AI safety, published to my WordPress site"
 ```
 
-## Architecture
+One command. Scheduled articles. Multiple platforms. Your voice.
 
-Monorepo with 10 packages, orchestrated by [Turborepo](https://turbo.build/) and [Temporal](https://temporal.io/).
+---
 
+## The Problem
+
+| Pain point | What people do today | What Quill does |
+|---|---|---|
+| **Content takes forever** | 5-10 hrs/article: research, write, edit, format, publish | End-to-end pipeline runs in minutes |
+| **AI writing sounds like AI** | "Delve into the ever-evolving landscape..." | 4 review agents + 93-phrase blacklist reject slop before publish |
+| **Voice is inconsistent** | Manually rewrite AI output to match your tone | Style fingerprinting extracts your voice from existing writing — no fine-tuning |
+| **Multi-platform is tedious** | Copy-paste and reformat for each platform | One piece adapts to blog posts, Twitter threads, and podcast scripts |
+| **No feedback loop** | Guess what works, repeat what doesn't | Analytics sync feeds engagement data back into generation |
+
+---
+
+## How It Works
+
+```mermaid
+flowchart LR
+    subgraph Input
+        A["🗣️ Natural language\ndescription"] --> B["📋 Channel Config"]
+        S["✍️ Your existing\nwriting samples"] --> F["🔍 Style\nFingerprint"]
+    end
+
+    subgraph Ingest["Data Ingestion"]
+        B --> D["RSS Feeds\nAPIs\nWeb Scraping"]
+        D --> |"cached &\ndeduped"| E["Source\nMaterial"]
+    end
+
+    subgraph Pipeline["Content Pipeline (LLM)"]
+        direction TB
+        E --> R["Research\n(Sonnet)"]
+        R --> O["Outline\n(Sonnet)"]
+        O --> DR["Draft\n(Opus)"]
+        F -.->|"voice\ninjected"| DR
+        P -.->|"engagement\ninsights"| DR
+        DR --> RV{"4 Review\nAgents"}
+        RV -->|"pass"| AD["Adapt"]
+        RV -->|"fail"| PO["Polish &\nRetry"]
+        PO -->|"≤3 tries"| RV
+    end
+
+    subgraph Publish["Multi-Platform Publishing"]
+        AD --> WP["WordPress"]
+        AD --> TW["Twitter\nThreads"]
+        AD --> POD["Podcast\n(TTS)"]
+    end
+
+    subgraph Feedback["Analytics Feedback Loop"]
+        WP & TW & POD --> AN["Engagement\nMetrics"]
+        AN --> P["Performance\nInsights"]
+    end
+
+    style Input fill:#f0f4ff,stroke:#4a6fa5
+    style Ingest fill:#fff4e6,stroke:#c48a2a
+    style Pipeline fill:#f0fff4,stroke:#3a8a5c
+    style Publish fill:#fff0f0,stroke:#a54a4a
+    style Feedback fill:#f5f0ff,stroke:#6a4aa5
 ```
-packages/
-  core/                 # Schemas, config, logger, anti-slop blacklist, connections store
-  cli/                  # Commander-based CLI (quill create, connect, run, fingerprint, ...)
-  data-ingestion/       # RSS feeds, APIs (Polygon, Spoonacular, Etsy), caching & dedup
-  style-fingerprint/    # Analyze writing style from URLs — pure computation, no LLM
-  content-pipeline/     # Multi-stage LLM pipeline: research → outline → draft → review
-  publishing/           # Platform adapters: WordPress, Ghost, Twitter, Buzzsprout podcasts
-  site-setup/           # WordPress.com site provisioning (categories, tags, pages, menus, OAuth)
-  database/             # Drizzle ORM + PostgreSQL schema (channels, runs, artifacts, publications)
-  orchestrator/         # Temporal workflows for scheduled content generation
-  monitoring/           # Channel metrics, analytics sync, performance insights
+
+### The pipeline in plain English:
+
+1. **You describe a channel** — topic, tone, audience, schedule, platforms
+2. **Quill ingests real data** — RSS feeds, market APIs, recipe databases — cached and deduplicated
+3. **Research stage** synthesizes sources into key facts, data points, and narrative angles
+4. **Outline stage** structures the piece with sections and assigned evidence
+5. **Draft stage** writes the full article using your style fingerprint, persona, and past performance insights
+6. **4 review agents score independently** — editing, fact-checking, engagement, and AI detection — each enforcing minimum quality thresholds
+7. **Polish loop** revises and re-reviews up to 3 times; content that can't pass the quality gate is never published
+8. **Adapt stage** fans out to platform-native formats (Markdown for blogs, threaded tweets, podcast scripts with TTS)
+9. **Analytics sync** pulls engagement metrics back in, so the next run learns from what resonated
+
+---
+
+## Quality: The Anti-Slop Stack
+
+Most AI content fails because there's no quality gate between generation and publish. Quill's review layer is the core differentiator:
+
+- **93-phrase blacklist** — "delve", "it's important to note", "in today's rapidly evolving landscape", and 90 more are hard-rejected
+- **4 parallel review agents** — Editor (structure, readability, voice match), Fact Checker (accuracy, source coverage), Engagement (hook strength, reader pull-through), AI Detection (naturalness, sentence-length variance, burstiness)
+- **9 scored dimensions** with configurable minimums per channel
+- **Revise-or-reject loop** — fails get polished and re-reviewed up to 3 times. If it still doesn't pass, it goes to a dead-letter queue instead of your audience
+
+---
+
+## Style Fingerprinting
+
+Point Quill at your best writing and it extracts a quantitative style profile — no LLM calls, no fine-tuning, zero cost:
+
+```bash
+quill fingerprint https://your-blog.com/favorite-post
 ```
+
+What it captures: sentence length distribution, paragraph variation, contraction frequency, formality, vocabulary patterns, use of headings/lists, greeting and signoff style, top n-grams. This profile is injected into the draft prompt so generated content matches your voice.
+
+---
 
 ## Quick Start
 
@@ -48,7 +130,6 @@ pnpm turbo build
 # Connect a publishing platform
 quill connect wordpress-com   # OAuth flow — opens browser
 quill connect wordpress       # Self-hosted — Application Passwords
-quill connect ghost
 quill connect twitter
 
 # Create a channel from a description
@@ -60,52 +141,41 @@ quill validate my-channel
 quill run my-channel
 ```
 
-## Key Features
+---
 
-### Anti-Slop Quality Gates
+## Example Channels
 
-Every generated article passes through review agents that reject AI-typical phrases ("delve into", "it's important to note", "in today's rapidly evolving landscape", etc.) and check for factual grounding, style consistency, and originality.
+Quill ships with three example channels to show the range:
 
-### Style Fingerprinting
+| Channel | What it does | Data sources | Platforms | Schedule |
+|---|---|---|---|---|
+| **Easy Weeknight Meals** | 30-min recipe blog in a casual parent's voice | Spoonacular API, Budget Bytes RSS | WordPress | Tue/Thu 9am |
+| **Tech Digest Podcast** | 5-min daily tech news recap, skeptical tone | Hacker News, TechCrunch, The Verge RSS | Podcast (Buzzsprout) + Twitter | Weekdays 7am |
+| **Weekly Stock Recap** | S&P 500 analysis, no-jargon style | Polygon API, Yahoo Finance RSS | WordPress + Twitter | Sat 10am |
 
-Point Quill at any URL and it extracts the writing style — tone, sentence structure, vocabulary patterns, formatting conventions. The fingerprint is injected into the content pipeline so generated articles match your voice.
+Each channel config defines voice (persona, opinions, verbal tics, vocabulary), data sources, quality thresholds, and publish targets — all in one YAML file.
 
-```bash
-quill fingerprint https://your-blog.com/best-post
+---
+
+## Architecture
+
+Monorepo with 10 packages, orchestrated by [Turborepo](https://turbo.build/) and [Temporal](https://temporal.io/).
+
+```
+packages/
+  core/                 # Schemas, config, logger, anti-slop blacklist, connections store
+  cli/                  # Commander-based CLI (create, connect, run, fingerprint, ...)
+  data-ingestion/       # RSS feeds, APIs (Polygon, Spoonacular), caching & dedup
+  style-fingerprint/    # Writing style extraction — pure computation, no LLM
+  content-pipeline/     # Multi-stage LLM pipeline: research → outline → draft → review
+  publishing/           # Platform adapters: WordPress, Twitter, Buzzsprout podcasts
+  site-setup/           # WordPress.com site provisioning + OAuth
+  database/             # Drizzle ORM + PostgreSQL (channels, runs, artifacts, publications)
+  orchestrator/         # Temporal workflows for scheduled content generation
+  monitoring/           # Analytics sync, performance insights, engagement feedback
 ```
 
-### WordPress.com OAuth
-
-Connect a WordPress.com site with a single browser authorization — no Application Passwords, no wp-admin, no plugins:
-
-```bash
-export WPCOM_CLIENT_ID=...
-export WPCOM_CLIENT_SECRET=...
-quill connect wordpress-com
-```
-
-### Multi-Platform Publishing
-
-Publish the same content adapted for different platforms. Each channel config can target multiple outputs:
-
-```yaml
-publishTargets:
-  - platform: wordpress
-    id: my-blog
-  - platform: twitter
-    id: my-twitter
-  - platform: ghost
-    id: newsletter
-```
-
-### Temporal Orchestration
-
-Scheduled pipelines run as durable Temporal workflows with automatic retries, observability, and the ability to pause/resume.
-
-```bash
-docker compose up -d   # Includes Temporal + UI
-quill dashboard        # Opens Temporal UI at localhost:8233
-```
+---
 
 ## Environment Variables
 
