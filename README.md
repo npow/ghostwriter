@@ -108,13 +108,19 @@ What it captures: sentence length distribution, paragraph variation, contraction
 
 ---
 
+## Install
+
+```bash
+npm install -g @npow/ghostwriter
+```
+
 ## Quick Start
 
 **Prerequisites:** Node.js >= 22, pnpm, Docker (for Postgres + Redis + Temporal)
 
 ```bash
 # Clone and install
-git clone <repo-url> && cd ghostwriter
+git clone https://github.com/npow/ghostwriter.git && cd ghostwriter
 pnpm install
 
 # Start infrastructure
@@ -187,6 +193,13 @@ See [`.env.example`](.env.example) for the full list. The only required key to g
 pnpm turbo build       # Build all packages
 pnpm turbo test        # Run tests
 pnpm turbo dev         # Watch mode
+```
+
+## Install from npm
+
+```bash
+npm install -g @npow/ghostwriter
+ghostwriter create "a weekly tech blog about AI safety"
 ```
 
 ## License
