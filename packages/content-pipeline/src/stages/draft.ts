@@ -5,7 +5,7 @@ import type {
   ContentDraft,
   StyleFingerprint,
 } from "@auto-blogger/core";
-import { AI_PHRASE_BLACKLIST, createChildLogger } from "@auto-blogger/core";
+import { AI_PHRASE_BLACKLIST, createChildLogger, getActivePhrases } from "@auto-blogger/core";
 import { callLlm } from "../llm.js";
 
 const logger = createChildLogger({ module: "pipeline:draft" });
@@ -32,9 +32,11 @@ export async function runDraftStage(
   const styleConstraints = fingerprint
     ? buildStyleConstraints(fingerprint)
     : "";
+  const learnedPhrases = await getActivePhrases(config.id).catch(() => []);
   const forbiddenPhrases = [
     ...AI_PHRASE_BLACKLIST,
     ...voice.vocabulary.forbidden,
+    ...learnedPhrases,
   ];
 
   const systemPrompt = `You are ${voice.name}, writing a ${config.contentType} about ${config.topic.focus}.
@@ -47,7 +49,7 @@ WRITING STYLE:
 ${styleConstraints}
 
 ANTI-SLOP RULES (CRITICAL):
-1. NEVER use any of these AI-typical phrases (this is a COMPLETE list — every single one is banned):
+1. NEVER use any of these AI-typical phrases (${AI_PHRASE_BLACKLIST.length} baseline + ${learnedPhrases.length} learned from past runs — every single one is banned):
 ${forbiddenPhrases.map((p) => `   - "${p}"`).join("\n")}
 2. ONLY state facts that appear in the Research Brief below. Do NOT invent or hallucinate ANY information.
 3. Vary your sentence lengths dramatically — mix 5-word punches with 30+ word flowing sentences. Aim for a coefficient of variation above 0.6 in sentence word counts.

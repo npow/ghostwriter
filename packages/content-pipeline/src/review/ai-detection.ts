@@ -1,8 +1,10 @@
-import type { ChannelConfig, ContentDraft, ReviewAgentResult } from "@auto-blogger/core";
+import type { ChannelConfig, ContentDraft, ReviewAgentResult, DiscoveredPattern } from "@auto-blogger/core";
 import {
+  AI_PHRASE_BLACKLIST,
   detectAiPhrases,
   computeBurstiness,
   analyzeParagraphVariation,
+  getActivePhrases,
 } from "@auto-blogger/core";
 import { callLlmJson } from "../llm.js";
 import {
@@ -19,9 +21,15 @@ import {
 export async function runAiDetectionReview(
   config: ChannelConfig,
   draft: ContentDraft
-): Promise<{ result: ReviewAgentResult; cost: number }> {
-  // Layer 1: Heuristic checks
+): Promise<{ result: ReviewAgentResult; discoveredPatterns: DiscoveredPattern[]; cost: number }> {
+  // Load learned patterns for this channel
+  const learnedPhrases = await getActivePhrases(config.id).catch(() => []);
+
+  // Layer 1: Heuristic checks (static blacklist + learned patterns)
   const aiPhrases = detectAiPhrases(draft.content);
+  const learnedHits = learnedPhrases.filter((p) =>
+    draft.content.toLowerCase().includes(p.toLowerCase())
+  );
   const burstiness = computeBurstiness(draft.content);
   const paragraphVariation = analyzeParagraphVariation(draft.content);
 
@@ -30,6 +38,12 @@ export async function runAiDetectionReview(
   if (aiPhrases.length > 0) {
     heuristicFeedback.push(
       `Found ${aiPhrases.length} AI-typical phrases: ${aiPhrases.join(", ")}`
+    );
+  }
+
+  if (learnedHits.length > 0) {
+    heuristicFeedback.push(
+      `Found ${learnedHits.length} learned AI pattern(s): ${learnedHits.join(", ")}`
     );
   }
 
@@ -48,6 +62,12 @@ export async function runAiDetectionReview(
   // Check for structural AI patterns
   const structuralIssues = detectStructuralPatterns(draft.content);
   heuristicFeedback.push(...structuralIssues);
+
+  // Build abbreviated known-patterns list for the LLM
+  const knownPatterns = [
+    ...AI_PHRASE_BLACKLIST.slice(0, 30),
+    ...learnedPhrases.slice(0, 20),
+  ];
 
   // Layer 2: LLM-based detection analysis
   const systemPrompt = `You are an AI detection expert analyzing text for patterns that AI detectors flag.
@@ -68,6 +88,15 @@ Evaluate:
    - Natural digressions or tangents (humans go off-topic briefly)
    - Energy shifts (humans get excited, then mellow, then fired up again)
 
+3. **Pattern Discovery**: Identify NEW AI-typical phrases or patterns in this text that are NOT already in our known list. Focus on:
+   - Recurring phrases that feel templated or formulaic
+   - Structural patterns (e.g., every section ending the same way)
+   - Stylistic tics (e.g., always hedging with the same construction)
+   Only report patterns you're confident about (>0.6). Do NOT re-report patterns already in the known list.
+
+KNOWN PATTERNS (already tracked — do NOT re-report these):
+${knownPatterns.map((p) => `- "${p}"`).join("\n")}
+
 EXAMPLES OF AI-LIKE vs HUMAN-LIKE WRITING:
 
 AI-like: "The stock market experienced significant volatility this week. Several factors contributed to this movement. First, inflation data exceeded expectations. Second, Federal Reserve commentary suggested continued tightening."
@@ -76,6 +105,7 @@ Human-like: "What a week. The S&P got hammered — down 2.3% — and honestly? M
 
 HEURISTIC ANALYSIS RESULTS:
 - AI phrases found: ${aiPhrases.length > 0 ? aiPhrases.join(", ") : "none"}
+- Learned pattern hits: ${learnedHits.length > 0 ? learnedHits.join(", ") : "none"}
 - Burstiness score: ${burstiness.burstinessScore.toFixed(2)} (human-like > 0.6)
 - Paragraph variation: ${paragraphVariation.variationScore.toFixed(2)} (human-like > 0.5)
 - Average sentence length: ${burstiness.avgSentenceLength.toFixed(1)} words
@@ -86,13 +116,28 @@ Respond with JSON:
   "scores": { "naturalness": N, "perplexityVariance": N },
   "passed": true/false,
   "feedback": ["specific AI-like patterns found"],
-  "suggestions": ["specific fixes to make it more human — be concrete, not vague"]
+  "suggestions": ["specific fixes to make it more human — be concrete, not vague"],
+  "discoveredPatterns": [
+    { "phrase": "the exact phrase or pattern", "category": "phrase|structural|stylistic", "confidence": 0.0-1.0, "context": "brief explanation" }
+  ]
 }`;
 
-  const { data, cost } = await callLlmJson<Omit<ReviewAgentResult, "agent">>(
+  interface AiDetectionLlmResponse {
+    scores: Record<string, number>;
+    passed: boolean;
+    feedback: string[];
+    suggestions: string[];
+    discoveredPatterns?: DiscoveredPattern[];
+  }
+
+  const { data, cost } = await callLlmJson<AiDetectionLlmResponse>(
     "sonnet",
     systemPrompt,
     draft.content
+  );
+
+  const discoveredPatterns: DiscoveredPattern[] = (data.discoveredPatterns ?? []).filter(
+    (p) => p.phrase && p.category && typeof p.confidence === "number"
   );
 
   // Layer 3: External AI detection (non-blocking — if APIs aren't configured, skip)
@@ -109,6 +154,7 @@ Respond with JSON:
   const allPassed =
     data.passed &&
     aiPhrases.length === 0 &&
+    learnedHits.length === 0 &&
     structuralIssues.length === 0 &&
     externalCheck.passed;
 
@@ -120,7 +166,7 @@ Respond with JSON:
     suggestions: data.suggestions,
   };
 
-  return { result, cost };
+  return { result, discoveredPatterns, cost };
 }
 
 /**

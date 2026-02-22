@@ -6,7 +6,7 @@ import type {
   ReviewScores,
   ReviewAgentResult,
 } from "@auto-blogger/core";
-import { createChildLogger } from "@auto-blogger/core";
+import { createChildLogger, mergeDiscoveredPatterns } from "@auto-blogger/core";
 import { runEditorReview } from "./editor.js";
 import { runFactCheckerReview } from "./fact-checker.js";
 import { runEngagementReview } from "./engagement.js";
@@ -47,6 +47,22 @@ export async function runReviewStage(
 
   const totalCost =
     editor.cost + factChecker.cost + engagement.cost + aiDetection.cost;
+
+  // Persist any newly discovered AI patterns (non-blocking)
+  if (aiDetection.discoveredPatterns.length > 0) {
+    mergeDiscoveredPatterns(config.id, aiDetection.discoveredPatterns)
+      .then((newCount) => {
+        if (newCount > 0) {
+          logger.info(
+            { channelId: config.id, newCount, total: aiDetection.discoveredPatterns.length },
+            "Persisted newly discovered AI patterns"
+          );
+        }
+      })
+      .catch((err) => {
+        logger.warn({ channelId: config.id, err }, "Failed to persist discovered patterns");
+      });
+  }
 
   const agentResults = [
     editor.result,

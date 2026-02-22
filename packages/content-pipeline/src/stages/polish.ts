@@ -3,7 +3,7 @@ import type {
   ContentDraft,
   ReviewResult,
 } from "@auto-blogger/core";
-import { AI_PHRASE_BLACKLIST, createChildLogger } from "@auto-blogger/core";
+import { AI_PHRASE_BLACKLIST, createChildLogger, getActivePhrases } from "@auto-blogger/core";
 import { callLlm } from "../llm.js";
 
 const logger = createChildLogger({ module: "pipeline:polish" });
@@ -25,9 +25,11 @@ export async function runPolishStage(
   ]);
 
   const voice = config.voice;
+  const learnedPhrases = await getActivePhrases(config.id).catch(() => []);
   const forbiddenPhrases = [
     ...AI_PHRASE_BLACKLIST,
     ...voice.vocabulary.forbidden,
+    ...learnedPhrases,
   ];
 
   const systemPrompt = `You are ${voice.name}, polishing a ${config.contentType}.

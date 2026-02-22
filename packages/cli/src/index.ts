@@ -10,6 +10,7 @@ import { logsCommand } from "./commands/logs.js";
 import { connectCommand } from "./commands/connect.js";
 import { fingerprintCommand } from "./commands/fingerprint.js";
 import { createCommand } from "./commands/create/index.js";
+import { patternsCommand } from "./commands/patterns.js";
 
 const program = new Command();
 
@@ -52,7 +53,7 @@ program
 
 program
   .command("connect [platform]")
-  .description("Connect a publishing platform (wordpress, wordpress-com, ghost, twitter)")
+  .description("Connect a publishing platform (wordpress, wordpress-com, twitter)")
   .action(connectCommand);
 
 program
@@ -68,6 +69,12 @@ program
   .option("--no-site-setup", "Skip WordPress site configuration")
   .option("--dry-run", "Show what would be created without writing", false)
   .action(createCommand);
+
+program
+  .command("patterns <subcommand> <channel-id>")
+  .description("Manage learned anti-slop patterns (list, prune)")
+  .option("--days <number>", "For prune: remove patterns not seen in N days", "90")
+  .action(patternsCommand);
 
 program
   .command("dashboard")
