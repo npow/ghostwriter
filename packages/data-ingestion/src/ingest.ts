@@ -1,5 +1,5 @@
-import type { DataSource, SourceMaterial } from "@auto-blogger/core";
-import { createChildLogger } from "@auto-blogger/core";
+import type { DataSource, SourceMaterial } from "@ghostwriter/core";
+import { createChildLogger } from "@ghostwriter/core";
 import { fetchApiData } from "./providers/api.js";
 import { fetchRssData } from "./providers/rss.js";
 import { fetchScrapeData } from "./providers/scrape.js";

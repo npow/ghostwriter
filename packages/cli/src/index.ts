@@ -15,7 +15,7 @@ import { patternsCommand } from "./commands/patterns.js";
 const program = new Command();
 
 program
-  .name("auto_blogger")
+  .name("ghostwriter")
   .description("Autonomous AI content engine with anti-slop quality gates")
   .version("0.1.0");
 

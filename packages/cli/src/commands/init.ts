@@ -1,6 +1,6 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { getChannelsDir } from "@auto-blogger/core";
+import { getChannelsDir } from "@ghostwriter/core";
 import chalk from "chalk";
 
 const TEMPLATE_CONFIG = `id: {CHANNEL_ID}
@@ -127,7 +127,7 @@ export async function initCommand(channelName: string) {
   console.log(
     `    2. Add example content to ${examplesDir}/`
   );
-  console.log(`    3. Run: auto_blogger validate ${channelId}`);
-  console.log(`    4. Run: auto_blogger run ${channelId} --dry-run`);
+  console.log(`    3. Run: ghostwriter validate ${channelId}`);
+  console.log(`    4. Run: ghostwriter run ${channelId} --dry-run`);
   console.log();
 }

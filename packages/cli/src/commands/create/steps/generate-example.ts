@@ -1,8 +1,8 @@
 import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { Ora } from "ora";
-import { callLlm } from "@auto-blogger/content-pipeline";
-import { getChannelsDir } from "@auto-blogger/core";
+import { callLlm } from "@ghostwriter/content-pipeline";
+import { getChannelsDir } from "@ghostwriter/core";
 import type { CreateContext } from "../types.js";
 import {
   EXAMPLE_ARTICLE_SYSTEM,

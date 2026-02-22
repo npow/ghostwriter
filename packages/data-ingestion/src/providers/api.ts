@@ -1,5 +1,5 @@
-import type { SourceMaterial } from "@auto-blogger/core";
-import { createChildLogger } from "@auto-blogger/core";
+import type { SourceMaterial } from "@ghostwriter/core";
+import { createChildLogger } from "@ghostwriter/core";
 import { withRetry, getRateLimiter, getCircuitBreaker } from "../retry.js";
 
 const logger = createChildLogger({ module: "data-ingestion:api" });

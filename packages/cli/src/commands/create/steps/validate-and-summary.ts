@@ -1,6 +1,6 @@
 import type { Ora } from "ora";
 import chalk from "chalk";
-import { ChannelConfigSchema } from "@auto-blogger/core";
+import { ChannelConfigSchema } from "@ghostwriter/core";
 import type { CreateContext } from "../types.js";
 
 export async function validateAndSummary(
@@ -71,13 +71,13 @@ export async function validateAndSummary(
   } else {
     console.log(chalk.green("  Next steps:"));
     console.log(
-      chalk.dim(`    auto_blogger run ${config.id} --dry-run    # Test the pipeline`)
+      chalk.dim(`    ghostwriter run ${config.id} --dry-run    # Test the pipeline`)
     );
     console.log(
-      chalk.dim(`    auto_blogger validate ${config.id}         # Validate config + API keys`)
+      chalk.dim(`    ghostwriter validate ${config.id}         # Validate config + API keys`)
     );
     console.log(
-      chalk.dim(`    auto_blogger run ${config.id}              # Run for real`)
+      chalk.dim(`    ghostwriter run ${config.id}              # Run for real`)
     );
     console.log("");
   }

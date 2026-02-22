@@ -2,7 +2,7 @@ import chalk from "chalk";
 import {
   loadLearnedPatterns,
   saveLearnedPatterns,
-} from "@auto-blogger/core";
+} from "@ghostwriter/core";
 
 interface PatternsOptions {
   days?: string;
@@ -14,7 +14,7 @@ export async function patternsCommand(
   options: PatternsOptions
 ) {
   if (!subcommand || !channelId) {
-    console.log(chalk.red("Usage: quill patterns <list|prune> <channel-id>"));
+    console.log(chalk.red("Usage: ghostwriter patterns <list|prune> <channel-id>"));
     return;
   }
 

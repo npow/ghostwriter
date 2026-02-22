@@ -5,8 +5,8 @@ import type {
   ReviewResult,
   ReviewScores,
   ReviewAgentResult,
-} from "@auto-blogger/core";
-import { createChildLogger, mergeDiscoveredPatterns } from "@auto-blogger/core";
+} from "@ghostwriter/core";
+import { createChildLogger, mergeDiscoveredPatterns } from "@ghostwriter/core";
 import { runEditorReview } from "./editor.js";
 import { runFactCheckerReview } from "./fact-checker.js";
 import { runEngagementReview } from "./engagement.js";

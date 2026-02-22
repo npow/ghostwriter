@@ -1,5 +1,5 @@
 import { Connection, Client, WorkflowHandle } from "@temporalio/client";
-import { env, createChildLogger } from "@auto-blogger/core";
+import { env, createChildLogger } from "@ghostwriter/core";
 import type { contentGenerationWorkflow } from "./workflows.js";
 
 const logger = createChildLogger({ module: "temporal:client" });
@@ -32,7 +32,7 @@ export async function startContentGeneration(
   logger.info({ workflowId, channelId, dryRun }, "Starting workflow");
 
   const handle = await client.workflow.start("contentGenerationWorkflow", {
-    taskQueue: "auto-blogger",
+    taskQueue: "ghostwriter",
     workflowId,
     args: [channelId, dryRun],
   });
@@ -60,7 +60,7 @@ export async function scheduleChannel(
     action: {
       type: "startWorkflow",
       workflowType: "scheduledContentWorkflow",
-      taskQueue: "auto-blogger",
+      taskQueue: "ghostwriter",
       args: [channelId],
     },
   });

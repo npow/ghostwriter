@@ -1,6 +1,6 @@
-import type { ChannelConfig, ConnectionEntry, ContentType, DataSource } from "@auto-blogger/core";
-import type { StyleProfile } from "@auto-blogger/style-fingerprint";
-import type { SiteSetupResult } from "@auto-blogger/site-setup";
+import type { ChannelConfig, ConnectionEntry, ContentType, DataSource } from "@ghostwriter/core";
+import type { StyleProfile } from "@ghostwriter/style-fingerprint";
+import type { SiteSetupResult } from "@ghostwriter/site-setup";
 
 // ─── ParsedIntent ──────────────────────────────────────────────────────────
 

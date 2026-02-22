@@ -2,7 +2,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { Ora } from "ora";
 import { stringify as yamlStringify } from "yaml";
-import { getChannelsDir, ChannelConfigSchema, type ChannelConfig } from "@auto-blogger/core";
+import { getChannelsDir, ChannelConfigSchema, type ChannelConfig } from "@ghostwriter/core";
 import type { CreateContext } from "../types.js";
 
 export async function assembleConfig(

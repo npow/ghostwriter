@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { readFile, writeFile, mkdir } from "node:fs/promises";
 import { join, dirname } from "node:path";
-import { createChildLogger } from "@auto-blogger/core";
+import { createChildLogger } from "@ghostwriter/core";
 
 const logger = createChildLogger({ module: "publishing:idempotency" });
 
@@ -21,7 +21,7 @@ interface IdempotencyFile {
 function getIdempotencyPath(): string {
   const home =
     process.env.HOME ?? process.env.USERPROFILE ?? process.cwd();
-  return join(home, ".auto-blogger", "idempotency.json");
+  return join(home, ".ghostwriter", "idempotency.json");
 }
 
 async function loadRecords(): Promise<Record<string, PublishRecord>> {

@@ -1,6 +1,6 @@
 import type { Ora } from "ora";
-import { callLlmJson } from "@auto-blogger/content-pipeline";
-import { executeSiteSetup, type SiteSetupPlan, type SiteSetupResult } from "@auto-blogger/site-setup";
+import { callLlmJson } from "@ghostwriter/content-pipeline";
+import { executeSiteSetup, type SiteSetupPlan, type SiteSetupResult } from "@ghostwriter/site-setup";
 import type { CreateContext } from "../types.js";
 import {
   PAGE_CONTENT_SYSTEM,

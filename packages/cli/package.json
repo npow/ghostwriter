@@ -1,10 +1,10 @@
 {
-  "name": "@auto-blogger/cli",
+  "name": "@ghostwriter/cli",
   "version": "0.1.0",
   "private": true,
   "type": "module",
   "bin": {
-    "auto_blogger": "./dist/index.js"
+    "ghostwriter": "./dist/index.js"
   },
   "scripts": {
     "build": "tsc",
@@ -13,15 +13,15 @@
     "clean": "rm -rf dist .turbo"
   },
   "dependencies": {
-    "@auto-blogger/core": "workspace:*",
-    "@auto-blogger/site-setup": "workspace:*",
-    "@auto-blogger/style-fingerprint": "workspace:*",
-    "@auto-blogger/database": "workspace:*",
-    "@auto-blogger/data-ingestion": "workspace:*",
-    "@auto-blogger/content-pipeline": "workspace:*",
-    "@auto-blogger/publishing": "workspace:*",
-    "@auto-blogger/orchestrator": "workspace:*",
-    "@auto-blogger/monitoring": "workspace:*",
+    "@ghostwriter/core": "workspace:*",
+    "@ghostwriter/site-setup": "workspace:*",
+    "@ghostwriter/style-fingerprint": "workspace:*",
+    "@ghostwriter/database": "workspace:*",
+    "@ghostwriter/data-ingestion": "workspace:*",
+    "@ghostwriter/content-pipeline": "workspace:*",
+    "@ghostwriter/publishing": "workspace:*",
+    "@ghostwriter/orchestrator": "workspace:*",
+    "@ghostwriter/monitoring": "workspace:*",
     "commander": "^13.0.0",
     "inquirer": "^12.3.0",
     "@inquirer/prompts": "^7.0.0",

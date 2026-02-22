@@ -1,5 +1,5 @@
 {
-  "name": "@auto-blogger/orchestrator",
+  "name": "@ghostwriter/orchestrator",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -13,12 +13,12 @@
     "worker": "node --loader ts-node/esm src/worker.ts"
   },
   "dependencies": {
-    "@auto-blogger/core": "workspace:*",
-    "@auto-blogger/database": "workspace:*",
-    "@auto-blogger/data-ingestion": "workspace:*",
-    "@auto-blogger/content-pipeline": "workspace:*",
-    "@auto-blogger/publishing": "workspace:*",
-    "@auto-blogger/monitoring": "workspace:*",
+    "@ghostwriter/core": "workspace:*",
+    "@ghostwriter/database": "workspace:*",
+    "@ghostwriter/data-ingestion": "workspace:*",
+    "@ghostwriter/content-pipeline": "workspace:*",
+    "@ghostwriter/publishing": "workspace:*",
+    "@ghostwriter/monitoring": "workspace:*",
     "@temporalio/client": "^1.11.0",
     "@temporalio/worker": "^1.11.0",
     "@temporalio/workflow": "^1.11.0",

@@ -6,7 +6,7 @@ import {
   getConnection,
   saveConnection,
   type ConnectionEntry,
-} from "@auto-blogger/core";
+} from "@ghostwriter/core";
 import type { CreateContext } from "../types.js";
 import { connectWordPressCom } from "../../connect.js";
 

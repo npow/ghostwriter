@@ -1,5 +1,5 @@
-import type { PlatformContent, PublishResult } from "@auto-blogger/core";
-import { createChildLogger } from "@auto-blogger/core";
+import type { PlatformContent, PublishResult } from "@ghostwriter/core";
+import { createChildLogger } from "@ghostwriter/core";
 import { TwitterApi } from "twitter-api-v2";
 
 const logger = createChildLogger({ module: "publishing:twitter" });

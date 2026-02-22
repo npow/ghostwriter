@@ -9,7 +9,7 @@ export async function fetchAndExtract(url: string): Promise<string[]> {
   const response = await fetch(url, {
     headers: {
       "User-Agent":
-        "Mozilla/5.0 (compatible; StyleFingerprint/1.0; +https://github.com/auto-blogger)",
+        "Mozilla/5.0 (compatible; StyleFingerprint/1.0; +https://github.com/ghostwriter)",
       Accept: "text/html,application/xhtml+xml",
     },
   });

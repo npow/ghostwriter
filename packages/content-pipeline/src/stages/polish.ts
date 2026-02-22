@@ -2,8 +2,8 @@ import type {
   ChannelConfig,
   ContentDraft,
   ReviewResult,
-} from "@auto-blogger/core";
-import { AI_PHRASE_BLACKLIST, createChildLogger, getActivePhrases } from "@auto-blogger/core";
+} from "@ghostwriter/core";
+import { AI_PHRASE_BLACKLIST, createChildLogger, getActivePhrases } from "@ghostwriter/core";
 import { callLlm } from "../llm.js";
 
 const logger = createChildLogger({ module: "pipeline:polish" });

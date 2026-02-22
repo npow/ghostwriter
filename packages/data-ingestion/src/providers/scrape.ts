@@ -1,6 +1,6 @@
 import * as cheerio from "cheerio";
-import type { SourceMaterial } from "@auto-blogger/core";
-import { createChildLogger } from "@auto-blogger/core";
+import type { SourceMaterial } from "@ghostwriter/core";
+import { createChildLogger } from "@ghostwriter/core";
 import { withRetry, getCircuitBreaker } from "../retry.js";
 
 const logger = createChildLogger({ module: "data-ingestion:scrape" });
@@ -66,7 +66,7 @@ async function fetchStatic(url: string): Promise<string> {
   const response = await fetch(url, {
     headers: {
       "User-Agent":
-        "Mozilla/5.0 (compatible; AutoBlogger/1.0; +https://github.com/auto-blogger)",
+        "Mozilla/5.0 (compatible; Ghostwriter/1.0; +https://github.com/ghostwriter)",
     },
   });
 

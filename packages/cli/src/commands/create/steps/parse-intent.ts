@@ -1,5 +1,5 @@
 import type { Ora } from "ora";
-import { callLlmJson } from "@auto-blogger/content-pipeline";
+import { callLlmJson } from "@ghostwriter/content-pipeline";
 import type { CreateContext, ParsedIntent } from "../types.js";
 import {
   INTENT_PARSING_SYSTEM,

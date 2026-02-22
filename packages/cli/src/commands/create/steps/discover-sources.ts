@@ -1,7 +1,7 @@
 import type { Ora } from "ora";
-import type { DataSource } from "@auto-blogger/core";
-import { callLlmJson } from "@auto-blogger/content-pipeline";
-import { validateRssFeed } from "@auto-blogger/data-ingestion";
+import type { DataSource } from "@ghostwriter/core";
+import { callLlmJson } from "@ghostwriter/content-pipeline";
+import { validateRssFeed } from "@ghostwriter/data-ingestion";
 import type { CreateContext, DiscoveredSources } from "../types.js";
 import {
   SOURCE_DISCOVERY_SYSTEM,

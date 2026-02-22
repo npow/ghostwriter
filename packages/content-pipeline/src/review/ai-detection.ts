@@ -1,11 +1,11 @@
-import type { ChannelConfig, ContentDraft, ReviewAgentResult, DiscoveredPattern } from "@auto-blogger/core";
+import type { ChannelConfig, ContentDraft, ReviewAgentResult, DiscoveredPattern } from "@ghostwriter/core";
 import {
   AI_PHRASE_BLACKLIST,
   detectAiPhrases,
   computeBurstiness,
   analyzeParagraphVariation,
   getActivePhrases,
-} from "@auto-blogger/core";
+} from "@ghostwriter/core";
 import { callLlmJson } from "../llm.js";
 import {
   checkExternalAiDetection,

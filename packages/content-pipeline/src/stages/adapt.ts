@@ -3,8 +3,8 @@ import type {
   ContentDraft,
   PlatformContent,
   PublishTarget,
-} from "@auto-blogger/core";
-import { createChildLogger, resolveTargetId } from "@auto-blogger/core";
+} from "@ghostwriter/core";
+import { createChildLogger, resolveTargetId } from "@ghostwriter/core";
 import { callLlm } from "../llm.js";
 
 const logger = createChildLogger({ module: "pipeline:adapt" });

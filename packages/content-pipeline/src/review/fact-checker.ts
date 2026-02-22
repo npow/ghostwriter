@@ -3,7 +3,7 @@ import type {
   ContentDraft,
   ResearchBrief,
   ReviewAgentResult,
-} from "@auto-blogger/core";
+} from "@ghostwriter/core";
 import { callLlmJson } from "../llm.js";
 
 /**

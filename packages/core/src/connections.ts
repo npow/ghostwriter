@@ -3,7 +3,7 @@ import { join, dirname } from "node:path";
 
 /**
  * Stored credentials for a platform connection.
- * Saved to ~/.auto-blogger/connections.json so credentials
+ * Saved to ~/.ghostwriter/connections.json so credentials
  * aren't tied to a single .env file or channel.
  */
 export interface ConnectionEntry {
@@ -21,7 +21,7 @@ interface ConnectionsFile {
 function getConnectionsPath(): string {
   const home =
     process.env.HOME ?? process.env.USERPROFILE ?? process.cwd();
-  return join(home, ".auto-blogger", "connections.json");
+  return join(home, ".ghostwriter", "connections.json");
 }
 
 export async function loadConnections(): Promise<ConnectionEntry[]> {

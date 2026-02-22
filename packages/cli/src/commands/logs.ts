@@ -1,5 +1,5 @@
 import chalk from "chalk";
-import { getRecentRuns } from "@auto-blogger/monitoring";
+import { getRecentRuns } from "@ghostwriter/monitoring";
 
 interface LogsOptions {
   lines: string;
@@ -21,7 +21,7 @@ export async function logsCommand(channelName: string, options: LogsOptions) {
       console.log(chalk.gray("  No pipeline runs found for this channel."));
       console.log(
         chalk.gray(
-          "  Run your first pipeline with: auto_blogger run " + channelName
+          "  Run your first pipeline with: ghostwriter run " + channelName
         )
       );
       console.log();

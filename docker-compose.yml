@@ -2,15 +2,15 @@ services:
   postgres:
     image: postgres:16-alpine
     environment:
-      POSTGRES_USER: auto_blogger
-      POSTGRES_PASSWORD: auto_blogger
-      POSTGRES_DB: auto_blogger
+      POSTGRES_USER: ghostwriter
+      POSTGRES_PASSWORD: ghostwriter
+      POSTGRES_DB: ghostwriter
     ports:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U auto_blogger"]
+      test: ["CMD-SHELL", "pg_isready -U ghostwriter"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -35,8 +35,8 @@ services:
     environment:
       - DB=postgresql
       - DB_PORT=5432
-      - POSTGRES_USER=auto_blogger
-      - POSTGRES_PWD=auto_blogger
+      - POSTGRES_USER=ghostwriter
+      - POSTGRES_PWD=ghostwriter
       - POSTGRES_SEEDS=postgres
       - DYNAMIC_CONFIG_FILE_PATH=config/dynamicconfig/development-sql.yaml
     ports:

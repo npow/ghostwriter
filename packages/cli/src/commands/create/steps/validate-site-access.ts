@@ -1,5 +1,5 @@
 import type { Ora } from "ora";
-import { WpComClient } from "@auto-blogger/site-setup";
+import { WpComClient } from "@ghostwriter/site-setup";
 import type { CreateContext } from "../types.js";
 
 interface UserMe {

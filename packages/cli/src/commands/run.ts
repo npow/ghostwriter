@@ -4,10 +4,10 @@ import {
   loadHistory,
   appendHistory,
   formatHistoryForPrompt,
-} from "@auto-blogger/core";
-import { ingestData } from "@auto-blogger/data-ingestion";
-import { runPipeline, analyzeStyleFingerprint } from "@auto-blogger/content-pipeline";
-import { publishAll } from "@auto-blogger/publishing";
+} from "@ghostwriter/core";
+import { ingestData } from "@ghostwriter/data-ingestion";
+import { runPipeline, analyzeStyleFingerprint } from "@ghostwriter/content-pipeline";
+import { publishAll } from "@ghostwriter/publishing";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import chalk from "chalk";

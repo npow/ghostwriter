@@ -1,4 +1,4 @@
-import { loadChannelConfig, listChannels } from "@auto-blogger/core";
+import { loadChannelConfig, listChannels } from "@ghostwriter/core";
 import chalk from "chalk";
 import Table from "cli-table3";
 
@@ -45,7 +45,7 @@ async function showAllStatus() {
   if (channelIds.length === 0) {
     console.log(
       chalk.yellow(
-        "\nNo channels found. Run: auto_blogger init <channel-name>\n"
+        "\nNo channels found. Run: ghostwriter init <channel-name>\n"
       )
     );
     return;

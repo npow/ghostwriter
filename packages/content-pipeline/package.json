@@ -1,5 +1,5 @@
 {
-  "name": "@auto-blogger/content-pipeline",
+  "name": "@ghostwriter/content-pipeline",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -13,9 +13,9 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.39.0",
-    "@auto-blogger/core": "workspace:*",
-    "@auto-blogger/data-ingestion": "workspace:*",
-    "@auto-blogger/style-fingerprint": "workspace:*"
+    "@ghostwriter/core": "workspace:*",
+    "@ghostwriter/data-ingestion": "workspace:*",
+    "@ghostwriter/style-fingerprint": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

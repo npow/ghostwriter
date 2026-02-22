@@ -1,4 +1,4 @@
-import { loadChannelConfig, env } from "@auto-blogger/core";
+import { loadChannelConfig, env } from "@ghostwriter/core";
 import chalk from "chalk";
 
 export async function validateCommand(channelName: string) {
@@ -60,7 +60,7 @@ export async function validateCommand(channelName: string) {
           } else {
             console.log(
               chalk.red(
-                "  [FAIL] WordPress credentials missing — run: auto_blogger connect wordpress"
+                "  [FAIL] WordPress credentials missing — run: ghostwriter connect wordpress"
               )
             );
             hasErrors = true;
@@ -104,7 +104,7 @@ export async function validateCommand(channelName: string) {
     } else {
       console.log(chalk.green("  All checks passed!"));
       console.log(
-        `\n  Run: auto_blogger run ${channelName} --dry-run`
+        `\n  Run: ghostwriter run ${channelName} --dry-run`
       );
     }
   } catch (err) {

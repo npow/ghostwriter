@@ -1,4 +1,4 @@
-import type { ConnectionEntry } from "@auto-blogger/core";
+import type { ConnectionEntry } from "@ghostwriter/core";
 
 export class WpComClient {
   private token: string;

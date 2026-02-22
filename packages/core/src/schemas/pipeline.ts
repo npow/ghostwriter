@@ -157,7 +157,7 @@ export type PublishResult = z.infer<typeof PublishResultSchema>;
 
 // ─── Style Fingerprint ──────────────────────────────────────────────────────
 
-/** @deprecated Use `StyleProfile` from `@auto-blogger/style-fingerprint` instead. */
+/** @deprecated Use `StyleProfile` from `@ghostwriter/style-fingerprint` instead. */
 export const StyleFingerprintSchema = z.object({
   channelId: z.string(),
   avgSentenceLength: z.number(),

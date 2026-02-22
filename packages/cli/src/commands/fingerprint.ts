@@ -4,8 +4,8 @@ import {
   analyzeStyle,
   analyzeUrl,
   formatStyleProfile,
-} from "@auto-blogger/style-fingerprint";
-import type { FormatMode } from "@auto-blogger/style-fingerprint";
+} from "@ghostwriter/style-fingerprint";
+import type { FormatMode } from "@ghostwriter/style-fingerprint";
 
 export async function fingerprintCommand(
   input: string,

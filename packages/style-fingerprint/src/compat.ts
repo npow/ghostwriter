@@ -108,7 +108,7 @@ export function fromStyleFingerprint(fp: StyleFingerprint): StyleProfile {
 }
 
 /**
- * @deprecated Use `analyzeStyle` from `@auto-blogger/style-fingerprint` instead.
+ * @deprecated Use `analyzeStyle` from `@ghostwriter/style-fingerprint` instead.
  * Backwards-compatible shim that produces a legacy StyleFingerprint.
  */
 export function analyzeStyleFingerprint(

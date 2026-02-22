@@ -1,7 +1,7 @@
 import Redis from "ioredis";
 import type { Redis as RedisType } from "ioredis";
 import { createHash } from "node:crypto";
-import { createChildLogger } from "@auto-blogger/core";
+import { createChildLogger } from "@ghostwriter/core";
 
 const logger = createChildLogger({ module: "data-ingestion:cache" });
 
@@ -44,7 +44,7 @@ export function contentHash(content: string): string {
  * Build a cache key from source config.
  */
 function cacheKey(sourceType: string, identifier: string): string {
-  return `auto-blogger:source:${sourceType}:${contentHash(identifier)}`;
+  return `ghostwriter:source:${sourceType}:${contentHash(identifier)}`;
 }
 
 /**
@@ -104,7 +104,7 @@ export async function isDuplicate(
   try {
     const redis = getRedis();
     const hash = contentHash(content);
-    const key = `auto-blogger:dedup:${channelId}:${hash}`;
+    const key = `ghostwriter:dedup:${channelId}:${hash}`;
     const exists = await redis.exists(key);
     return exists === 1;
   } catch (err) {
@@ -124,7 +124,7 @@ export async function markSeen(
   try {
     const redis = getRedis();
     const hash = contentHash(content);
-    const key = `auto-blogger:dedup:${channelId}:${hash}`;
+    const key = `ghostwriter:dedup:${channelId}:${hash}`;
     await redis.setex(key, ttlSeconds, "1");
   } catch (err) {
     logger.debug({ channelId, error: err instanceof Error ? err.message : String(err) }, "Dedup mark failed (non-fatal)");

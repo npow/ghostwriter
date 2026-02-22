@@ -3,13 +3,13 @@ import type {
   PlatformContent,
   PublishResult,
   PublishTarget,
-} from "@auto-blogger/core";
+} from "@ghostwriter/core";
 import {
   env,
   createChildLogger,
   getConnection,
   resolveTargetId,
-} from "@auto-blogger/core";
+} from "@ghostwriter/core";
 import { publishToTwitter } from "./adapters/twitter.js";
 import { publishToPodcast } from "./adapters/podcast.js";
 import { publishToWordPress } from "./adapters/wordpress.js";
@@ -148,7 +148,7 @@ export async function publishAll(
 /**
  * Publish to a single target. Resolves credentials from:
  * 1. The target config itself (inline in channel YAML)
- * 2. The connections store (~/.auto-blogger/connections.json)
+ * 2. The connections store (~/.ghostwriter/connections.json)
  * 3. Environment variables (fallback)
  */
 async function publishOne(
@@ -168,7 +168,7 @@ async function publishOne(
         conn?.credentials?.accessSecret ?? env.twitterAccessSecret;
       if (!apiKey || !apiSecret || !accessToken || !accessSecret) {
         throw new Error(
-          "Twitter credentials missing — run: auto_blogger connect twitter"
+          "Twitter credentials missing — run: ghostwriter connect twitter"
         );
       }
       return publishToTwitter(content, {
@@ -250,7 +250,7 @@ async function publishOne(
         env.wordpressPassword;
       if (!wpUrl || !wpUser || !wpPass) {
         throw new Error(
-          "WordPress credentials missing — run: auto_blogger connect wordpress"
+          "WordPress credentials missing — run: ghostwriter connect wordpress"
         );
       }
       return publishToWordPress(content, {

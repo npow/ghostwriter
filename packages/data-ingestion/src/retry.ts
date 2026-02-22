@@ -1,4 +1,4 @@
-import { createChildLogger } from "@auto-blogger/core";
+import { createChildLogger } from "@ghostwriter/core";
 
 const logger = createChildLogger({ module: "data-ingestion:retry" });
 

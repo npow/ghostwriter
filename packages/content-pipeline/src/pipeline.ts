@@ -5,8 +5,8 @@ import type {
   PlatformContent,
   ReviewResult,
   StyleFingerprint,
-} from "@auto-blogger/core";
-import { createChildLogger } from "@auto-blogger/core";
+} from "@ghostwriter/core";
+import { createChildLogger } from "@ghostwriter/core";
 import {
   runResearchStage,
   runDifferentiationStage,

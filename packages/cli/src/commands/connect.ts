@@ -6,7 +6,7 @@ import {
   saveConnection,
   loadConnections,
   type ConnectionEntry,
-} from "@auto-blogger/core";
+} from "@ghostwriter/core";
 import {
   buildAuthorizeUrl,
   exchangeCodeForToken,
@@ -17,7 +17,7 @@ import {
   findAvailablePort,
   type WpComOAuthConfig,
   type WpComSite,
-} from "@auto-blogger/site-setup";
+} from "@ghostwriter/site-setup";
 
 type Platform = "wordpress" | "wordpress-com" | "twitter";
 
@@ -57,7 +57,7 @@ export async function connectCommand(platform?: string) {
 async function listConnections() {
   const connections = await loadConnections();
   if (connections.length === 0) {
-    console.log(chalk.dim("\n  No connections yet. Run: auto_blogger connect\n"));
+    console.log(chalk.dim("\n  No connections yet. Run: ghostwriter connect\n"));
     return;
   }
 
@@ -156,7 +156,7 @@ export async function connectWordPress() {
       "\n  To create an Application Password:\n" +
         `    1. Go to ${baseUrl}/wp-admin/profile.php\n` +
         '    2. Scroll to "Application Passwords"\n' +
-        '    3. Enter a name (e.g. "auto_blogger") and click "Add New Application Password"\n' +
+        '    3. Enter a name (e.g. "ghostwriter") and click "Add New Application Password"\n' +
         "    4. Copy the generated password\n"
     )
   );
@@ -257,7 +257,7 @@ export async function connectWordPress() {
   console.log(chalk.green("\n  WordPress connected successfully!"));
   console.log(
     chalk.dim(
-      `  Saved as "${connectionId}" in ~/.auto-blogger/connections.json\n`
+      `  Saved as "${connectionId}" in ~/.ghostwriter/connections.json\n`
     )
   );
 
@@ -451,7 +451,7 @@ export async function connectWordPressCom(): Promise<
   console.log(chalk.green("\n  WordPress.com connected successfully!"));
   console.log(
     chalk.dim(
-      `  Saved as "${connectionId}" in ~/.auto-blogger/connections.json\n`
+      `  Saved as "${connectionId}" in ~/.ghostwriter/connections.json\n`
     )
   );
 
@@ -540,7 +540,7 @@ async function connectTwitter() {
   console.log(chalk.green("\n  Twitter connected successfully!"));
   console.log(
     chalk.dim(
-      `  Saved as "${connectionId}" in ~/.auto-blogger/connections.json\n`
+      `  Saved as "${connectionId}" in ~/.ghostwriter/connections.json\n`
     )
   );
 }

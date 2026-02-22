@@ -1,5 +1,5 @@
 {
-  "name": "@auto-blogger/publishing",
+  "name": "@ghostwriter/publishing",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -12,7 +12,7 @@
     "clean": "rm -rf dist .turbo"
   },
   "dependencies": {
-    "@auto-blogger/core": "workspace:*",
+    "@ghostwriter/core": "workspace:*",
     "twitter-api-v2": "^1.18.0"
   },
   "devDependencies": {

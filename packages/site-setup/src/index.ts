@@ -20,7 +20,7 @@ export {
   type WpComSite,
 } from "./wordpress-com/oauth.js";
 
-import type { ConnectionEntry } from "@auto-blogger/core";
+import type { ConnectionEntry } from "@ghostwriter/core";
 import type { SiteSetupPlan, SiteSetupResult } from "./types.js";
 import { WpComClient } from "./wordpress-com/client.js";
 import { ensureCategories } from "./wordpress-com/categories.js";

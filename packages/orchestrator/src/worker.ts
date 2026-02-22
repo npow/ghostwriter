@@ -1,5 +1,5 @@
 import { Worker, NativeConnection } from "@temporalio/worker";
-import { env, createChildLogger } from "@auto-blogger/core";
+import { env, createChildLogger } from "@ghostwriter/core";
 import * as activities from "./activities.js";
 
 const logger = createChildLogger({ module: "temporal:worker" });
@@ -14,12 +14,12 @@ export async function startWorker() {
   const worker = await Worker.create({
     connection,
     namespace: env.temporalNamespace,
-    taskQueue: "auto-blogger",
+    taskQueue: "ghostwriter",
     workflowsPath: new URL("./workflows.js", import.meta.url).pathname,
     activities,
   });
 
-  logger.info("Temporal worker started, listening on task queue: auto-blogger");
+  logger.info("Temporal worker started, listening on task queue: ghostwriter");
 
   await worker.run();
 }

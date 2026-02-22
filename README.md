@@ -1,13 +1,13 @@
-# Quill
+# Ghostwriter
 
-**Describe what you want to publish. Quill handles the rest.**
+**Describe what you want to publish. Ghostwriter handles the rest.**
 
 Content creators, solopreneurs, and small teams spend 5-10 hours per article researching, writing, editing, and publishing across platforms. Most AI writing tools produce generic slop that readers immediately recognize as machine-generated.
 
-Quill is an autonomous content engine that generates high-quality, on-brand content from real data sources — and actually sounds like you.
+Ghostwriter is an autonomous content engine that generates high-quality, on-brand content from real data sources — and actually sounds like you.
 
 ```
-quill create "a weekly tech blog about AI safety, published to my WordPress site"
+ghostwriter create "a weekly tech blog about AI safety, published to my WordPress site"
 ```
 
 One command. Scheduled articles. Multiple platforms. Your voice.
@@ -16,7 +16,7 @@ One command. Scheduled articles. Multiple platforms. Your voice.
 
 ## The Problem
 
-| Pain point | What people do today | What Quill does |
+| Pain point | What people do today | What Ghostwriter does |
 |---|---|---|
 | **Content takes forever** | 5-10 hrs/article: research, write, edit, format, publish | End-to-end pipeline runs in minutes |
 | **AI writing sounds like AI** | "Delve into the ever-evolving landscape..." | 4 review agents + 93-phrase blacklist reject slop before publish |
@@ -74,7 +74,7 @@ flowchart LR
 ### The pipeline in plain English:
 
 1. **You describe a channel** — topic, tone, audience, schedule, platforms
-2. **Quill ingests real data** — RSS feeds, market APIs, recipe databases — cached and deduplicated
+2. **Ghostwriter ingests real data** — RSS feeds, market APIs, recipe databases — cached and deduplicated
 3. **Research stage** synthesizes sources into key facts, data points, and narrative angles
 4. **Outline stage** structures the piece with sections and assigned evidence
 5. **Draft stage** writes the full article using your style fingerprint, persona, and past performance insights
@@ -87,7 +87,7 @@ flowchart LR
 
 ## Quality: The Anti-Slop Stack
 
-Most AI content fails because there's no quality gate between generation and publish. Quill's review layer is the core differentiator:
+Most AI content fails because there's no quality gate between generation and publish. Ghostwriter's review layer is the core differentiator:
 
 - **93-phrase blacklist** — "delve", "it's important to note", "in today's rapidly evolving landscape", and 90 more are hard-rejected
 - **4 parallel review agents** — Editor (structure, readability, voice match), Fact Checker (accuracy, source coverage), Engagement (hook strength, reader pull-through), AI Detection (naturalness, sentence-length variance, burstiness)
@@ -98,10 +98,10 @@ Most AI content fails because there's no quality gate between generation and pub
 
 ## Style Fingerprinting
 
-Point Quill at your best writing and it extracts a quantitative style profile — no LLM calls, no fine-tuning, zero cost:
+Point Ghostwriter at your best writing and it extracts a quantitative style profile — no LLM calls, no fine-tuning, zero cost:
 
 ```bash
-quill fingerprint https://your-blog.com/favorite-post
+ghostwriter fingerprint https://your-blog.com/favorite-post
 ```
 
 What it captures: sentence length distribution, paragraph variation, contraction frequency, formality, vocabulary patterns, use of headings/lists, greeting and signoff style, top n-grams. This profile is injected into the draft prompt so generated content matches your voice.
@@ -114,7 +114,7 @@ What it captures: sentence length distribution, paragraph variation, contraction
 
 ```bash
 # Clone and install
-git clone <repo-url> && cd quill
+git clone <repo-url> && cd ghostwriter
 pnpm install
 
 # Start infrastructure
@@ -128,24 +128,24 @@ cp .env.example .env
 pnpm turbo build
 
 # Connect a publishing platform
-quill connect wordpress-com   # OAuth flow — opens browser
-quill connect wordpress       # Self-hosted — Application Passwords
-quill connect twitter
+ghostwriter connect wordpress-com   # OAuth flow — opens browser
+ghostwriter connect wordpress       # Self-hosted — Application Passwords
+ghostwriter connect twitter
 
 # Create a channel from a description
-quill create "a daily recipe blog with Mediterranean focus"
+ghostwriter create "a daily recipe blog with Mediterranean focus"
 
 # Or scaffold manually
-quill init my-channel
-quill validate my-channel
-quill run my-channel
+ghostwriter init my-channel
+ghostwriter validate my-channel
+ghostwriter run my-channel
 ```
 
 ---
 
 ## Example Channels
 
-Quill ships with three example channels to show the range:
+Ghostwriter ships with three example channels to show the range:
 
 | Channel | What it does | Data sources | Platforms | Schedule |
 |---|---|---|---|---|

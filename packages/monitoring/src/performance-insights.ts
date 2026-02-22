@@ -1,12 +1,12 @@
-import { getDb } from "@auto-blogger/database";
+import { getDb } from "@ghostwriter/database";
 import {
   contentAnalytics,
   publications,
   contentArtifacts,
   pipelineRuns,
-} from "@auto-blogger/database";
+} from "@ghostwriter/database";
 import { eq, and, desc, sql, gte } from "drizzle-orm";
-import { createChildLogger } from "@auto-blogger/core";
+import { createChildLogger } from "@ghostwriter/core";
 
 const logger = createChildLogger({ module: "monitoring:performance-insights" });
 

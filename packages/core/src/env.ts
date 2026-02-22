@@ -30,7 +30,7 @@ export const env = {
     return optionalEnv("TEMPORAL_ADDRESS", "localhost:7233");
   },
   get temporalNamespace() {
-    return optionalEnv("TEMPORAL_NAMESPACE", "auto-blogger");
+    return optionalEnv("TEMPORAL_NAMESPACE", "ghostwriter");
   },
   get twitterApiKey() {
     return process.env.TWITTER_API_KEY;

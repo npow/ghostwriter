@@ -34,7 +34,7 @@ export interface StylePatterns {
   averageMessageLength: number;
 }
 
-// ─── Detailed raw metrics (from auto_blogger) ────────────────────────────────
+// ─── Detailed raw metrics (from ghostwriter) ────────────────────────────────
 
 export interface RawStyleMetrics {
   avgSentenceLength: number;

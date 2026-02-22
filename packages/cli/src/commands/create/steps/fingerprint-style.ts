@@ -4,7 +4,7 @@ import {
   mergeStyleProfiles,
   formatStyleProfile,
   type StyleProfile,
-} from "@auto-blogger/style-fingerprint";
+} from "@ghostwriter/style-fingerprint";
 import type { CreateContext } from "../types.js";
 
 export async function fingerprintStyle(

@@ -7,6 +7,6 @@ export default defineConfig({
   dbCredentials: {
     url:
       process.env.DATABASE_URL ??
-      "postgresql://auto_blogger:auto_blogger@localhost:5432/auto_blogger",
+      "postgresql://ghostwriter:ghostwriter@localhost:5432/ghostwriter",
   },
 });

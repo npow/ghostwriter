@@ -1,26 +1,26 @@
-import { loadChannelConfig, createChildLogger } from "@auto-blogger/core";
+import { loadChannelConfig, createChildLogger } from "@ghostwriter/core";
 import type {
   ChannelConfig,
   SourceMaterial,
   PlatformContent,
   PublishResult,
   StyleFingerprint,
-} from "@auto-blogger/core";
-import { ingestData } from "@auto-blogger/data-ingestion";
+} from "@ghostwriter/core";
+import { ingestData } from "@ghostwriter/data-ingestion";
 import {
   runPipeline,
   type PipelineResult,
   analyzeStyleFingerprint,
-} from "@auto-blogger/content-pipeline";
-import { publishAll } from "@auto-blogger/publishing";
+} from "@ghostwriter/content-pipeline";
+import { publishAll } from "@ghostwriter/publishing";
 import {
   syncAnalytics,
   generatePerformanceInsights,
   formatInsightsForPrompt,
-} from "@auto-blogger/monitoring";
+} from "@ghostwriter/monitoring";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { getChannelsDir } from "@auto-blogger/core";
+import { getChannelsDir } from "@ghostwriter/core";
 
 const logger = createChildLogger({ module: "orchestrator:activities" });
 

@@ -15,7 +15,7 @@ import {
 
 /**
  * Analyze an array of text samples and produce a unified StyleProfile.
- * Merges raw metric extraction (auto_blogger) with normalized dimension
+ * Merges raw metric extraction (ghostwriter) with normalized dimension
  * scoring (Prism). Pure computation — no LLM calls, no dependencies.
  */
 export function analyzeStyle(texts: string[]): StyleProfile {
@@ -23,7 +23,7 @@ export function analyzeStyle(texts: string[]): StyleProfile {
     return emptyProfile();
   }
 
-  // --- Raw metrics (from auto_blogger's fingerprint logic) ---
+  // --- Raw metrics (from ghostwriter's fingerprint logic) ---
   const textMetrics = texts.map(analyzeText);
 
   const avg = <K extends keyof (typeof textMetrics)[0]>(key: K) =>

@@ -17,31 +17,31 @@ importers:
 
   packages/cli:
     dependencies:
-      '@auto-blogger/content-pipeline':
+      '@ghostwriter/content-pipeline':
         specifier: workspace:*
         version: link:../content-pipeline
-      '@auto-blogger/core':
+      '@ghostwriter/core':
         specifier: workspace:*
         version: link:../core
-      '@auto-blogger/data-ingestion':
+      '@ghostwriter/data-ingestion':
         specifier: workspace:*
         version: link:../data-ingestion
-      '@auto-blogger/database':
+      '@ghostwriter/database':
         specifier: workspace:*
         version: link:../database
-      '@auto-blogger/monitoring':
+      '@ghostwriter/monitoring':
         specifier: workspace:*
         version: link:../monitoring
-      '@auto-blogger/orchestrator':
+      '@ghostwriter/orchestrator':
         specifier: workspace:*
         version: link:../orchestrator
-      '@auto-blogger/publishing':
+      '@ghostwriter/publishing':
         specifier: workspace:*
         version: link:../publishing
-      '@auto-blogger/site-setup':
+      '@ghostwriter/site-setup':
         specifier: workspace:*
         version: link:../site-setup
-      '@auto-blogger/style-fingerprint':
+      '@ghostwriter/style-fingerprint':
         specifier: workspace:*
         version: link:../style-fingerprint
       '@inquirer/prompts':
@@ -81,13 +81,13 @@ importers:
       '@anthropic-ai/sdk':
         specifier: ^0.39.0
         version: 0.39.0
-      '@auto-blogger/core':
+      '@ghostwriter/core':
         specifier: workspace:*
         version: link:../core
-      '@auto-blogger/data-ingestion':
+      '@ghostwriter/data-ingestion':
         specifier: workspace:*
         version: link:../data-ingestion
-      '@auto-blogger/style-fingerprint':
+      '@ghostwriter/style-fingerprint':
         specifier: workspace:*
         version: link:../style-fingerprint
     devDependencies:
@@ -128,7 +128,7 @@ importers:
 
   packages/data-ingestion:
     dependencies:
-      '@auto-blogger/core':
+      '@ghostwriter/core':
         specifier: workspace:*
         version: link:../core
       cheerio:
@@ -156,7 +156,7 @@ importers:
 
   packages/database:
     dependencies:
-      '@auto-blogger/core':
+      '@ghostwriter/core':
         specifier: workspace:*
         version: link:../core
       drizzle-orm:
@@ -181,10 +181,10 @@ importers:
 
   packages/monitoring:
     dependencies:
-      '@auto-blogger/core':
+      '@ghostwriter/core':
         specifier: workspace:*
         version: link:../core
-      '@auto-blogger/database':
+      '@ghostwriter/database':
         specifier: workspace:*
         version: link:../database
       drizzle-orm:
@@ -203,22 +203,22 @@ importers:
 
   packages/orchestrator:
     dependencies:
-      '@auto-blogger/content-pipeline':
+      '@ghostwriter/content-pipeline':
         specifier: workspace:*
         version: link:../content-pipeline
-      '@auto-blogger/core':
+      '@ghostwriter/core':
         specifier: workspace:*
         version: link:../core
-      '@auto-blogger/data-ingestion':
+      '@ghostwriter/data-ingestion':
         specifier: workspace:*
         version: link:../data-ingestion
-      '@auto-blogger/database':
+      '@ghostwriter/database':
         specifier: workspace:*
         version: link:../database
-      '@auto-blogger/monitoring':
+      '@ghostwriter/monitoring':
         specifier: workspace:*
         version: link:../monitoring
-      '@auto-blogger/publishing':
+      '@ghostwriter/publishing':
         specifier: workspace:*
         version: link:../publishing
       '@temporalio/activity':
@@ -246,7 +246,7 @@ importers:
 
   packages/publishing:
     dependencies:
-      '@auto-blogger/core':
+      '@ghostwriter/core':
         specifier: workspace:*
         version: link:../core
       twitter-api-v2:
@@ -265,7 +265,7 @@ importers:
 
   packages/site-setup:
     dependencies:
-      '@auto-blogger/core':
+      '@ghostwriter/core':
         specifier: workspace:*
         version: link:../core
     devDependencies:

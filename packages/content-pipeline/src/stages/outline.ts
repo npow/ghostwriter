@@ -2,8 +2,8 @@ import type {
   ChannelConfig,
   ResearchBrief,
   ContentOutline,
-} from "@auto-blogger/core";
-import { createChildLogger } from "@auto-blogger/core";
+} from "@ghostwriter/core";
+import { createChildLogger } from "@ghostwriter/core";
 import { callLlmJson } from "../llm.js";
 
 const logger = createChildLogger({ module: "pipeline:outline" });

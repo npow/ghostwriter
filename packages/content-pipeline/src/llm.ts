@@ -1,5 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { createChildLogger } from "@auto-blogger/core";
+import { createChildLogger } from "@ghostwriter/core";
 
 const logger = createChildLogger({ module: "content-pipeline:llm" });
 

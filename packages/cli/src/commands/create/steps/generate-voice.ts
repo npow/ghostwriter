@@ -1,7 +1,7 @@
 import type { Ora } from "ora";
-import { callLlmJson } from "@auto-blogger/content-pipeline";
-import { AI_PHRASE_BLACKLIST } from "@auto-blogger/core";
-import { formatStyleProfile } from "@auto-blogger/style-fingerprint";
+import { callLlmJson } from "@ghostwriter/content-pipeline";
+import { AI_PHRASE_BLACKLIST } from "@ghostwriter/core";
+import { formatStyleProfile } from "@ghostwriter/style-fingerprint";
 import type { CreateContext, GeneratedVoice } from "../types.js";
 import {
   VOICE_GENERATION_SYSTEM,

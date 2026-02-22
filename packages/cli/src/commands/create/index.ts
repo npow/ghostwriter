@@ -26,7 +26,7 @@ export async function createCommand(
     );
     console.log(
       chalk.dim(
-        '  Example: auto_blogger create "weekly stock market recap blog, casual and funny"\n'
+        '  Example: ghostwriter create "weekly stock market recap blog, casual and funny"\n'
       )
     );
     process.exitCode = 1;

@@ -1,7 +1,7 @@
-import { getDb } from "@auto-blogger/database";
-import { publications, contentAnalytics } from "@auto-blogger/database";
+import { getDb } from "@ghostwriter/database";
+import { publications, contentAnalytics } from "@ghostwriter/database";
 import { eq, and, isNotNull } from "drizzle-orm";
-import { createChildLogger } from "@auto-blogger/core";
+import { createChildLogger } from "@ghostwriter/core";
 
 const logger = createChildLogger({ module: "monitoring:analytics-sync" });
 

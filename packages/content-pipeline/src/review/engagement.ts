@@ -1,4 +1,4 @@
-import type { ChannelConfig, ContentDraft, ReviewAgentResult } from "@auto-blogger/core";
+import type { ChannelConfig, ContentDraft, ReviewAgentResult } from "@ghostwriter/core";
 import { callLlmJson } from "../llm.js";
 
 /**
