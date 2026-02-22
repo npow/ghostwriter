@@ -66,8 +66,8 @@ export async function getCached<T>(
 
     logger.debug({ key, sourceType }, "Cache miss");
     return null;
-  } catch {
-    // Cache failure is non-fatal — just fetch fresh
+  } catch (err) {
+    logger.debug({ sourceType, error: err instanceof Error ? err.message : String(err) }, "Cache read failed (non-fatal)");
     return null;
   }
 }
@@ -88,8 +88,8 @@ export async function setCached<T>(
 
     await redis.setex(key, ttl, JSON.stringify(data));
     logger.debug({ key, ttl }, "Cached data");
-  } catch {
-    // Cache failure is non-fatal
+  } catch (err) {
+    logger.debug({ sourceType, error: err instanceof Error ? err.message : String(err) }, "Cache write failed (non-fatal)");
   }
 }
 
@@ -107,7 +107,8 @@ export async function isDuplicate(
     const key = `auto-blogger:dedup:${channelId}:${hash}`;
     const exists = await redis.exists(key);
     return exists === 1;
-  } catch {
+  } catch (err) {
+    logger.debug({ channelId, error: err instanceof Error ? err.message : String(err) }, "Dedup check failed (non-fatal)");
     return false;
   }
 }
@@ -125,8 +126,8 @@ export async function markSeen(
     const hash = contentHash(content);
     const key = `auto-blogger:dedup:${channelId}:${hash}`;
     await redis.setex(key, ttlSeconds, "1");
-  } catch {
-    // Non-fatal
+  } catch (err) {
+    logger.debug({ channelId, error: err instanceof Error ? err.message : String(err) }, "Dedup mark failed (non-fatal)");
   }
 }
 

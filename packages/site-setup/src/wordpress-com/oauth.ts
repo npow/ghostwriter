@@ -89,13 +89,25 @@ export async function fetchCurrentUser(token: string): Promise<WpComUser> {
 }
 
 export async function fetchUserSites(token: string): Promise<WpComSite[]> {
-  const resp = await fetch("https://public-api.wordpress.com/rest/v1.1/me/sites", {
+  const resp = await fetch("https://public-api.wordpress.com/rest/v1.1/me/sites?site_visibility=all&include_domain_only=false", {
     headers: { Authorization: `Bearer ${token}` },
     signal: AbortSignal.timeout(10_000),
   });
 
   if (!resp.ok) {
-    throw new Error(`Failed to fetch sites (${resp.status})`);
+    // Fallback: try the v1.2 endpoint
+    const resp2 = await fetch("https://public-api.wordpress.com/rest/v1.2/me/sites", {
+      headers: { Authorization: `Bearer ${token}` },
+      signal: AbortSignal.timeout(10_000),
+    });
+
+    if (!resp2.ok) {
+      const body = await resp2.text();
+      throw new Error(`Failed to fetch sites (${resp2.status}): ${body}`);
+    }
+
+    const data2 = (await resp2.json()) as { sites: WpComSite[] };
+    return data2.sites ?? [];
   }
 
   const data = (await resp.json()) as { sites: WpComSite[] };

@@ -18,7 +18,7 @@ export interface AnalyticsSnapshot {
 
 /**
  * Sync analytics from all platforms for published content.
- * Fetches engagement data from Ghost and Twitter APIs, stores in content_analytics.
+ * Fetches engagement data from Twitter and WordPress APIs, stores in content_analytics.
  */
 export async function syncAnalytics(channelId?: string): Promise<number> {
   const db = getDb();
@@ -81,8 +81,6 @@ async function fetchPlatformAnalytics(pub: {
   if (!pub.platformId) return null;
 
   switch (pub.platform) {
-    case "ghost":
-      return fetchGhostAnalytics(pub.id, pub.channelId, pub.platformId);
     case "twitter":
       return fetchTwitterAnalytics(pub.id, pub.channelId, pub.platformId);
     case "wordpress":
@@ -90,102 +88,6 @@ async function fetchPlatformAnalytics(pub: {
     default:
       return null;
   }
-}
-
-/**
- * Fetch post analytics from Ghost Content API.
- * Ghost doesn't expose views directly via Admin API — uses the members analytics endpoint.
- * Falls back to comment count as engagement proxy.
- */
-async function fetchGhostAnalytics(
-  publicationId: string,
-  channelId: string,
-  postId: string
-): Promise<AnalyticsSnapshot | null> {
-  const ghostUrl = process.env.GHOST_URL;
-  const ghostApiKey = process.env.GHOST_ADMIN_API_KEY;
-  if (!ghostUrl || !ghostApiKey) return null;
-
-  try {
-    // Ghost Admin API — fetch post details including comment count
-    const [id, secret] = ghostApiKey.split(":");
-    if (!id || !secret) return null;
-
-    // Create JWT for Ghost Admin API
-    const token = await createGhostJwt(id, secret);
-
-    const response = await fetch(
-      `${ghostUrl}/ghost/api/admin/posts/${postId}/?fields=id,comment_count,email_open_rate`,
-      {
-        headers: { Authorization: `Ghost ${token}` },
-        signal: AbortSignal.timeout(10_000),
-      }
-    );
-
-    if (!response.ok) {
-      logger.debug(
-        { status: response.status, postId },
-        "Ghost API returned non-200"
-      );
-      return null;
-    }
-
-    const data = (await response.json()) as {
-      posts: Array<{
-        id: string;
-        comment_count?: number;
-        email_open_rate?: number;
-      }>;
-    };
-
-    const post = data.posts?.[0];
-    if (!post) return null;
-
-    return {
-      publicationId,
-      channelId,
-      platform: "ghost",
-      views: 0, // Ghost doesn't expose view counts via API — use Plausible/GA integration
-      clicks: 0,
-      shares: 0,
-      likes: 0,
-      comments: post.comment_count ?? 0,
-    };
-  } catch (err) {
-    logger.debug(
-      { postId, error: err instanceof Error ? err.message : String(err) },
-      "Ghost analytics fetch failed"
-    );
-    return null;
-  }
-}
-
-/**
- * Create a Ghost Admin API JWT token.
- */
-async function createGhostJwt(id: string, secret: string): Promise<string> {
-  // Ghost uses a simple hex-encoded secret → HMAC-SHA256 JWT
-  const keyBuf = Buffer.from(secret, "hex");
-
-  const header = Buffer.from(
-    JSON.stringify({ alg: "HS256", typ: "JWT", kid: id })
-  ).toString("base64url");
-
-  const now = Math.floor(Date.now() / 1000);
-  const payload = Buffer.from(
-    JSON.stringify({
-      iat: now,
-      exp: now + 300,
-      aud: "/admin/",
-    })
-  ).toString("base64url");
-
-  const { createHmac } = await import("node:crypto");
-  const signature = createHmac("sha256", keyBuf)
-    .update(`${header}.${payload}`)
-    .digest("base64url");
-
-  return `${header}.${payload}.${signature}`;
 }
 
 /**
@@ -305,8 +207,8 @@ async function fetchWordPressAnalytics(
         const stats = (await statsResp.json()) as { views?: number };
         views = stats.views ?? 0;
       }
-    } catch {
-      // Jetpack Stats not available — that's fine
+    } catch (err) {
+      logger.debug({ postId, error: err instanceof Error ? err.message : String(err) }, "Jetpack Stats not available");
     }
 
     return {

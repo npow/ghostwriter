@@ -9,6 +9,7 @@
     "test": "turbo test",
     "lint": "turbo lint",
     "clean": "turbo clean",
+    "cli": "node packages/cli/dist/index.js",
     "db:generate": "pnpm --filter @auto-blogger/database db:generate",
     "db:migrate": "pnpm --filter @auto-blogger/database db:migrate",
     "db:studio": "pnpm --filter @auto-blogger/database db:studio"

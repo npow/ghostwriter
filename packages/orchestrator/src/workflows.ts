@@ -73,8 +73,10 @@ export async function contentGenerationWorkflow(
     try {
       await syncChannelAnalytics(channelId);
       performanceContext = await getPerformanceContext(channelId);
-    } catch {
+    } catch (err) {
       // Analytics sync is best-effort — don't block content generation
+      const msg = err instanceof Error ? err.message : String(err);
+      currentStatus.error = `Analytics sync failed (non-blocking): ${msg}`;
     }
     if (cancelled) return { success: false, error: "Cancelled", totalCost: 0 };
 

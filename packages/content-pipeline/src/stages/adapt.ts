@@ -55,8 +55,8 @@ async function adaptForPlatform(
 ): Promise<{ adaptation: PlatformContent; cost: number }> {
   const platform = target.platform;
 
-  // Ghost/WordPress: use the draft content as-is (it's already in markdown)
-  if (platform === "ghost" || platform === "wordpress") {
+  // WordPress: use the draft content as-is (it's already in markdown)
+  if (platform === "wordpress") {
     return {
       adaptation: {
         channelId: config.id,

@@ -10,7 +10,6 @@ import {
   getConnection,
   resolveTargetId,
 } from "@auto-blogger/core";
-import { publishToGhost } from "./adapters/ghost.js";
 import { publishToTwitter } from "./adapters/twitter.js";
 import { publishToPodcast } from "./adapters/podcast.js";
 import { publishToWordPress } from "./adapters/wordpress.js";
@@ -64,8 +63,8 @@ export async function publishAll(
     );
 
     // Idempotency check: skip if already published
-    if (!options?.force && isAlreadyPublished(idempotencyKey)) {
-      const prev = getPreviousPublish(idempotencyKey);
+    if (!options?.force && await isAlreadyPublished(idempotencyKey)) {
+      const prev = await getPreviousPublish(idempotencyKey);
       logger.info(
         { platform: adaptation.platform, targetId: adaptation.targetId, idempotencyKey },
         "Skipping duplicate publish (idempotency)"
@@ -105,7 +104,7 @@ export async function publishAll(
 
       if (result.success) {
         succeeded.push(result);
-        recordPublish(idempotencyKey, {
+        await recordPublish(idempotencyKey, {
           idempotencyKey,
           platform: adaptation.platform,
           channelId: config.id,
@@ -157,28 +156,6 @@ async function publishOne(
   content: PlatformContent
 ): Promise<PublishResult> {
   switch (target.platform) {
-    case "ghost": {
-      const conn = target.id
-        ? await getConnection(target.id, "ghost")
-        : undefined;
-      const ghostUrl =
-        target.url ?? conn?.url ?? conn?.credentials?.url ?? env.ghostUrl;
-      const ghostKey =
-        target.apiKey ??
-        conn?.credentials?.apiKey ??
-        env.ghostAdminApiKey;
-      if (!ghostUrl || !ghostKey) {
-        throw new Error(
-          "Ghost credentials missing — run: auto_blogger connect ghost"
-        );
-      }
-      return publishToGhost(content, {
-        url: ghostUrl,
-        apiKey: ghostKey,
-        tags: target.tags ?? [],
-      });
-    }
-
     case "twitter": {
       const conn = target.id
         ? await getConnection(target.id, "twitter")

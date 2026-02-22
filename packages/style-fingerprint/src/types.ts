@@ -133,8 +133,6 @@ export interface StyleFingerprint {
   passiveVoiceFrequency: number;
   adverbFrequency: number;
   readabilityScore: number;
-  humorDensity: number;
-  metaphorDensity: number;
   dataReferenceDensity: number;
   dialogueFrequency: number;
   listUsageFrequency: number;

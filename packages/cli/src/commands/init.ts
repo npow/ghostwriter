@@ -41,10 +41,8 @@ voice:
   tone: conversational
 
 publishTargets:
-  - platform: ghost
-    tags:
-      - tag1
-      - tag2
+  - platform: wordpress
+    id: wordpress-com
   - platform: twitter
     format: thread
     maxTweets: 10

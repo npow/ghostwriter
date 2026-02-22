@@ -19,7 +19,7 @@ import {
   type WpComSite,
 } from "@auto-blogger/site-setup";
 
-type Platform = "wordpress" | "wordpress-com" | "ghost" | "twitter";
+type Platform = "wordpress" | "wordpress-com" | "twitter";
 
 export async function connectCommand(platform?: string) {
   if (!platform) {
@@ -28,7 +28,6 @@ export async function connectCommand(platform?: string) {
       choices: [
         { value: "wordpress-com", name: "WordPress.com (OAuth)" },
         { value: "wordpress", name: "WordPress (self-hosted)" },
-        { value: "ghost", name: "Ghost CMS" },
         { value: "twitter", name: "Twitter / X" },
         { value: "list", name: "List existing connections" },
       ],
@@ -42,9 +41,6 @@ export async function connectCommand(platform?: string) {
     case "wordpress-com":
       await connectWordPressCom();
       break;
-    case "ghost":
-      await connectGhost();
-      break;
     case "twitter":
       await connectTwitter();
       break;
@@ -53,7 +49,7 @@ export async function connectCommand(platform?: string) {
       break;
     default:
       console.log(chalk.red(`\n  Unknown platform: ${platform}`));
-      console.log(`  Supported: wordpress, wordpress-com, ghost, twitter\n`);
+      console.log(`  Supported: wordpress, wordpress-com, twitter\n`);
       process.exitCode = 1;
   }
 }
@@ -336,8 +332,8 @@ export async function connectWordPressCom(): Promise<
       "Use lowercase letters, numbers, and hyphens only",
   });
 
-  // Step 3: Start local callback server
-  const port = await findAvailablePort();
+  // Step 3: Start local callback server (fixed port so it matches the registered redirect URI)
+  const port = 3456;
   const redirectUri = `http://localhost:${port}/callback`;
   const config: WpComOAuthConfig = {
     clientId,
@@ -399,62 +395,51 @@ export async function connectWordPressCom(): Promise<
     )
   );
 
-  // Step 8: Fetch and select site
-  let sites = await fetchUserSites(tokenResponse.access_token);
-  let readySites = sites.filter((s) => s.visible && !s.is_coming_soon);
+  // Step 8: Resolve site — token response includes blog_id and blog_url
+  let siteUrl = tokenResponse.blog_url;
+  const blogId = tokenResponse.blog_id;
 
-  if (readySites.length === 0) {
-    console.log(
-      chalk.yellow("\n  No ready WordPress.com sites found on this account.")
-    );
-    const openSignup = await confirm({
-      message: "Open wordpress.com/start to create a site?",
-      default: true,
-    });
-    if (openSignup) {
-      exec(`${cmd} "https://wordpress.com/start"`);
-      console.log(
-        chalk.dim("  Create your site, then press Enter to continue.\n")
-      );
-    }
-    await input({ message: "Press Enter when ready..." });
-
-    // Re-fetch
-    sites = await fetchUserSites(tokenResponse.access_token);
-    readySites = sites.filter((s) => s.visible && !s.is_coming_soon);
-
-    if (readySites.length === 0) {
-      console.log(
-        chalk.red(
-          "\n  Still no sites found. Create a site and run this command again.\n"
-        )
-      );
-      return undefined;
-    }
-  }
-
-  let selectedSite: WpComSite;
-  if (readySites.length === 1) {
-    selectedSite = readySites[0];
-    console.log(
-      chalk.green(`  Auto-selected site: ${selectedSite.name} (${selectedSite.URL})`)
-    );
+  if (siteUrl) {
+    console.log(chalk.green(`  Site: ${siteUrl} (blog ID: ${blogId})`));
   } else {
-    const siteUrl = await select({
-      message: "Which site do you want to connect?",
-      choices: readySites.map((s) => ({
-        value: s.URL,
-        name: `${s.name} — ${s.URL}`,
-      })),
-    });
-    selectedSite = readySites.find((s) => s.URL === siteUrl)!;
+    // Fallback: try to list sites
+    try {
+      const sites = await fetchUserSites(tokenResponse.access_token);
+      const readySites = sites.filter((s) => s.visible && !s.is_coming_soon);
+
+      if (readySites.length === 1) {
+        siteUrl = readySites[0].URL;
+        console.log(
+          chalk.green(`  Auto-selected site: ${readySites[0].name} (${siteUrl})`)
+        );
+      } else if (readySites.length > 1) {
+        siteUrl = await select({
+          message: "Which site do you want to connect?",
+          choices: readySites.map((s) => ({
+            value: s.URL,
+            name: `${s.name} — ${s.URL}`,
+          })),
+        });
+      }
+    } catch {
+      // Site listing failed — ask manually
+    }
+
+    if (!siteUrl) {
+      siteUrl = await input({
+        message: "WordPress.com site URL (e.g. https://yoursite.wordpress.com):",
+        validate: (val) => {
+          try { new URL(val); return true; } catch { return "Enter a valid URL"; }
+        },
+      });
+    }
   }
 
   // Step 9: Save connection
   const conn: ConnectionEntry = {
     id: connectionId,
     platform: "wordpress-com",
-    url: selectedSite.URL,
+    url: siteUrl,
     credentials: {
       token: tokenResponse.access_token,
     },
@@ -476,115 +461,12 @@ export async function connectWordPressCom(): Promise<
     chalk.cyan(
       "  publishTargets:\n" +
         `    - platform: wordpress\n` +
-        `      id: ${connectionId}\n` +
-        `      url: ${selectedSite.URL}\n`
+        `      id: ${connectionId}\n`
     )
   );
   console.log();
 
   return conn;
-}
-
-// ─── Ghost ─────────────────────────────────────────────────────────────────
-
-async function connectGhost() {
-  console.log(chalk.blue("\n  Connect Ghost CMS\n"));
-
-  const existingGhost = (await loadConnections()).filter(
-    (c) => c.platform === "ghost"
-  );
-  const defaultName =
-    existingGhost.length === 0
-      ? "ghost"
-      : `ghost-${existingGhost.length + 1}`;
-
-  const connectionId = await input({
-    message: "Connection name:",
-    default: defaultName,
-    validate: (val) =>
-      /^[a-z0-9-]+$/.test(val) ||
-      "Use lowercase letters, numbers, and hyphens only",
-  });
-
-  const siteUrl = await input({
-    message: "Ghost site URL:",
-    validate: (val) => {
-      try {
-        new URL(val);
-        return true;
-      } catch {
-        return "Enter a valid URL (e.g. https://your-blog.ghost.io)";
-      }
-    },
-  });
-
-  const baseUrl = siteUrl.replace(/\/$/, "");
-
-  console.log(
-    chalk.dim(
-      "\n  To get your Admin API key:\n" +
-        `    1. Go to ${baseUrl}/ghost/#/settings/integrations\n` +
-        '    2. Click "Add custom integration"\n' +
-        '    3. Name it "auto_blogger"\n' +
-        "    4. Copy the Admin API Key\n"
-    )
-  );
-
-  const openBrowser = await confirm({
-    message: "Open your browser to Ghost integrations?",
-    default: true,
-  });
-
-  if (openBrowser) {
-    const { exec } = await import("node:child_process");
-    const cmd =
-      process.platform === "darwin"
-        ? "open"
-        : process.platform === "win32"
-          ? "start"
-          : "xdg-open";
-    exec(`${cmd} "${baseUrl}/ghost/#/settings/integrations"`);
-  }
-
-  const apiKey = await password({
-    message: "Admin API Key:",
-    mask: "*",
-  });
-
-  // Test connection
-  console.log(chalk.dim("\n  Testing connection..."));
-  const testResult = await testGhostAuth(baseUrl, apiKey.trim());
-
-  if (!testResult.ok) {
-    console.log(
-      chalk.red(`\n  Connection failed: ${testResult.error}`)
-    );
-    const saveAnyway = await confirm({
-      message: "Save credentials anyway?",
-      default: false,
-    });
-    if (!saveAnyway) return;
-  } else {
-    console.log(chalk.green(`  Connected to: ${testResult.title}`));
-  }
-
-  await saveConnection({
-    id: connectionId,
-    platform: "ghost",
-    url: baseUrl,
-    credentials: {
-      url: baseUrl,
-      apiKey: apiKey.trim(),
-    },
-    createdAt: new Date().toISOString(),
-  });
-
-  console.log(chalk.green("\n  Ghost connected successfully!"));
-  console.log(
-    chalk.dim(
-      `  Saved as "${connectionId}" in ~/.auto-blogger/connections.json\n`
-    )
-  );
 }
 
 // ─── Twitter ───────────────────────────────────────────────────────────────
@@ -761,50 +643,3 @@ export async function testWordPressAuth(
   }
 }
 
-async function testGhostAuth(
-  baseUrl: string,
-  adminApiKey: string
-): Promise<{ ok: true; title: string } | { ok: false; error: string }> {
-  try {
-    const [id, secret] = adminApiKey.split(":");
-    if (!id || !secret) {
-      return {
-        ok: false,
-        error: "Invalid API key format — expected 'id:secret'",
-      };
-    }
-
-    const { createHmac } = await import("node:crypto");
-    const keyBuf = Buffer.from(secret, "hex");
-    const header = Buffer.from(
-      JSON.stringify({ alg: "HS256", typ: "JWT", kid: id })
-    ).toString("base64url");
-    const now = Math.floor(Date.now() / 1000);
-    const payload = Buffer.from(
-      JSON.stringify({ iat: now, exp: now + 300, aud: "/admin/" })
-    ).toString("base64url");
-    const signature = createHmac("sha256", keyBuf)
-      .update(`${header}.${payload}`)
-      .digest("base64url");
-    const token = `${header}.${payload}.${signature}`;
-
-    const resp = await fetch(`${baseUrl}/ghost/api/admin/site/`, {
-      headers: { Authorization: `Ghost ${token}` },
-      signal: AbortSignal.timeout(10_000),
-    });
-
-    if (!resp.ok) {
-      return { ok: false, error: `HTTP ${resp.status}` };
-    }
-
-    const data = (await resp.json()) as {
-      site?: { title?: string };
-    };
-    return { ok: true, title: data.site?.title ?? "Ghost site" };
-  } catch (err) {
-    return {
-      ok: false,
-      error: err instanceof Error ? err.message : String(err),
-    };
-  }
-}

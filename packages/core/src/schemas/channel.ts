@@ -64,15 +64,6 @@ export const VoiceSchema = z.object({
 
 // ─── Publishing Targets ─────────────────────────────────────────────────────
 
-export const GhostTargetSchema = z.object({
-  platform: z.literal("ghost"),
-  id: z.string().optional(), // Unique target ID (e.g. "my-ghost-blog")
-  url: z.string().url().optional(),
-  apiKey: z.string().optional(),
-  tags: z.array(z.string()).default([]),
-  newsletter: z.boolean().default(false),
-});
-
 export const TwitterTargetSchema = z.object({
   platform: z.literal("twitter"),
   id: z.string().optional(),
@@ -98,13 +89,12 @@ export const EtsyTargetSchema = z.object({
 export const WordPressTargetSchema = z.object({
   platform: z.literal("wordpress"),
   id: z.string().optional(), // Unique target ID (e.g. "tech-blog", "recipes-site")
-  url: z.string().url(),
+  url: z.string().url().optional(),
   username: z.string().optional(),
   password: z.string().optional(),
 });
 
 export const PublishTargetSchema = z.discriminatedUnion("platform", [
-  GhostTargetSchema,
   TwitterTargetSchema,
   PodcastTargetSchema,
   EtsyTargetSchema,

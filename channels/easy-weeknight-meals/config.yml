@@ -60,14 +60,8 @@ voice:
   tone: casual
 
 publishTargets:
-  - platform: ghost
-    tags:
-      - recipes
-      - weeknight-meals
-      - quick-dinner
-  - platform: twitter
-    format: thread
-    maxTweets: 6
+  - platform: wordpress
+    id: wordpress-com
 
 schedule:
   cron: "0 9 * * TUE,THU"

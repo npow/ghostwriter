@@ -175,8 +175,6 @@ export const StyleFingerprintSchema = z.object({
   passiveVoiceFrequency: z.number(),
   adverbFrequency: z.number(),
   readabilityScore: z.number(),
-  humorDensity: z.number(),
-  metaphorDensity: z.number(),
   dataReferenceDensity: z.number(),
   dialogueFrequency: z.number(),
   listUsageFrequency: z.number(),

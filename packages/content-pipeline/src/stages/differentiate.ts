@@ -81,11 +81,20 @@ ${JSON.stringify(brief.dataPoints, null, 2)}
 Narrative Angles Already Identified:
 ${brief.narrativeAngles.join("\n")}`;
 
-  const { data, cost } = await callLlmJson<DifferentiationBrief>(
+  const { data: raw, cost } = await callLlmJson<Partial<DifferentiationBrief>>(
     "sonnet",
     systemPrompt,
     briefSummary
   );
+
+  // Ensure all fields are present even if the LLM omitted some
+  const data: DifferentiationBrief = {
+    contentGaps: raw.contentGaps ?? [],
+    contrariangles: raw.contrariangles ?? [],
+    uniqueDataInsights: raw.uniqueDataInsights ?? [],
+    hookIdeas: raw.hookIdeas ?? [],
+    avoidTopics: raw.avoidTopics ?? [],
+  };
 
   logger.info(
     {

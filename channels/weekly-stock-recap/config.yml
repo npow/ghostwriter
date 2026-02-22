@@ -60,11 +60,8 @@ voice:
   tone: conversational
 
 publishTargets:
-  - platform: ghost
-    tags:
-      - markets
-      - weekly-recap
-      - stocks
+  - platform: wordpress
+    id: wordpress-com
   - platform: twitter
     format: thread
     maxTweets: 8

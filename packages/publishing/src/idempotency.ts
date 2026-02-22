@@ -1,21 +1,50 @@
 import { createHash } from "node:crypto";
+import { readFile, writeFile, mkdir } from "node:fs/promises";
+import { join, dirname } from "node:path";
 import { createChildLogger } from "@auto-blogger/core";
 
 const logger = createChildLogger({ module: "publishing:idempotency" });
 
-/**
- * In-memory idempotency store (would use Redis/DB in production).
- * Tracks which content has been published to which platforms.
- */
-const publishedSet = new Map<string, PublishRecord>();
-
-interface PublishRecord {
+export interface PublishRecord {
   idempotencyKey: string;
   platform: string;
   channelId: string;
   publishedAt: string;
   platformId?: string;
   url?: string;
+}
+
+interface IdempotencyFile {
+  records: Record<string, PublishRecord>;
+}
+
+function getIdempotencyPath(): string {
+  const home =
+    process.env.HOME ?? process.env.USERPROFILE ?? process.cwd();
+  return join(home, ".auto-blogger", "idempotency.json");
+}
+
+async function loadRecords(): Promise<Record<string, PublishRecord>> {
+  const path = getIdempotencyPath();
+  try {
+    const data = await readFile(path, "utf-8");
+    const parsed = JSON.parse(data) as IdempotencyFile;
+    return parsed.records ?? {};
+  } catch {
+    return {};
+  }
+}
+
+async function saveRecords(
+  records: Record<string, PublishRecord>
+): Promise<void> {
+  const path = getIdempotencyPath();
+  await mkdir(dirname(path), { recursive: true });
+  await writeFile(
+    path,
+    JSON.stringify({ records } as IdempotencyFile, null, 2),
+    "utf-8"
+  );
 }
 
 /**
@@ -37,33 +66,42 @@ export function generateIdempotencyKey(
 /**
  * Check if this content has already been published to this platform.
  */
-export function isAlreadyPublished(idempotencyKey: string): boolean {
-  return publishedSet.has(idempotencyKey);
+export async function isAlreadyPublished(
+  idempotencyKey: string
+): Promise<boolean> {
+  const records = await loadRecords();
+  return idempotencyKey in records;
 }
 
 /**
  * Get the previous publish record for this content.
  */
-export function getPreviousPublish(
+export async function getPreviousPublish(
   idempotencyKey: string
-): PublishRecord | undefined {
-  return publishedSet.get(idempotencyKey);
+): Promise<PublishRecord | undefined> {
+  const records = await loadRecords();
+  return records[idempotencyKey];
 }
 
 /**
  * Record a successful publish for idempotency.
  */
-export function recordPublish(
+export async function recordPublish(
   idempotencyKey: string,
   record: PublishRecord
-): void {
-  publishedSet.set(idempotencyKey, record);
-  logger.debug({ idempotencyKey, platform: record.platform }, "Recorded publish for idempotency");
+): Promise<void> {
+  const records = await loadRecords();
+  records[idempotencyKey] = record;
+  await saveRecords(records);
+  logger.debug(
+    { idempotencyKey, platform: record.platform },
+    "Recorded publish for idempotency"
+  );
 }
 
 /**
  * Clear publish records (for testing or forced re-publish).
  */
-export function clearPublishRecords(): void {
-  publishedSet.clear();
+export async function clearPublishRecords(): Promise<void> {
+  await saveRecords({});
 }

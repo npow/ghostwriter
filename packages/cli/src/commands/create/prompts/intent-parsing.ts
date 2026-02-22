@@ -32,7 +32,7 @@ Rules:
 - contentType: pick the best match from the enum values
 - If user mentions a writer by name (e.g. "like Matt Levine"), put their name in styleReferences
 - If user provides a URL, put it in styleReferences
-- publishPlatform: "wordpress-com" for WordPress.com sites, "ghost" for Ghost
+- publishPlatform: "wordpress-com" for WordPress.com sites
 - siteUrl: extract the full domain if mentioned (e.g. "marketpulse.wordpress.com")
 - schedule: infer from frequency words. Default to weekly if a recap/roundup, daily otherwise
 - constraints: add "Never give financial advice" for finance topics, "Recipes must include measurements" for recipe topics, etc.

@@ -19,7 +19,8 @@ export async function loadChannelConfig(
   logger.debug({ configPath }, "Loading channel config");
 
   const raw = await readFile(configPath, "utf-8");
-  const parsed = parseYaml(raw);
+  const expanded = raw.replace(/\$\{(\w+)\}/g, (_, key) => process.env[key] ?? "");
+  const parsed = parseYaml(expanded);
 
   const result = ChannelConfigSchema.safeParse(parsed);
   if (!result.success) {

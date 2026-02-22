@@ -16,7 +16,7 @@ export interface ParsedIntent {
   };
   toneDescription: string;
   styleReferences: string[];
-  publishPlatform: "wordpress-com" | "ghost";
+  publishPlatform: "wordpress-com";
   siteUrl?: string;
   connectionId?: string;
   schedule?: {

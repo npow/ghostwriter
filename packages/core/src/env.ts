@@ -32,12 +32,6 @@ export const env = {
   get temporalNamespace() {
     return optionalEnv("TEMPORAL_NAMESPACE", "auto-blogger");
   },
-  get ghostUrl() {
-    return process.env.GHOST_URL;
-  },
-  get ghostAdminApiKey() {
-    return process.env.GHOST_ADMIN_API_KEY;
-  },
   get twitterApiKey() {
     return process.env.TWITTER_API_KEY;
   },

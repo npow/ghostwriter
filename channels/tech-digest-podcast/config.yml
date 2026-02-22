@@ -60,10 +60,6 @@ publishTargets:
     provider: buzzsprout
     voiceId: default
     maxDurationMinutes: 5
-  - platform: ghost
-    tags:
-      - tech-news
-      - daily-digest
   - platform: twitter
     format: thread
     maxTweets: 5

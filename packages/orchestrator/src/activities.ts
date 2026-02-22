@@ -1,4 +1,4 @@
-import { loadChannelConfig } from "@auto-blogger/core";
+import { loadChannelConfig, createChildLogger } from "@auto-blogger/core";
 import type {
   ChannelConfig,
   SourceMaterial,
@@ -21,6 +21,8 @@ import {
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { getChannelsDir } from "@auto-blogger/core";
+
+const logger = createChildLogger({ module: "orchestrator:activities" });
 
 /**
  * Temporal activities — each is an independently retriable unit of work.
@@ -50,8 +52,8 @@ export async function loadStyleFingerprint(
     try {
       const text = await readFile(fullPath, "utf-8");
       exampleTexts.push(text);
-    } catch {
-      // Skip missing examples
+    } catch (err) {
+      logger.debug({ path: fullPath, error: err instanceof Error ? err.message : String(err) }, "Skipping missing example file");
     }
   }
 

@@ -26,8 +26,6 @@ export function toStyleFingerprint(
     passiveVoiceFrequency: profile.raw.passiveVoiceFrequency,
     adverbFrequency: profile.raw.adverbFrequency,
     readabilityScore: profile.raw.readabilityScore,
-    humorDensity: 0,
-    metaphorDensity: 0,
     dataReferenceDensity: profile.raw.dataReferenceDensity,
     dialogueFrequency: profile.raw.dialogueFrequency,
     listUsageFrequency: profile.raw.listUsageFrequency,

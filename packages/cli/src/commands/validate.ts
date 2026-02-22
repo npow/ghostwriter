@@ -23,19 +23,6 @@ export async function validateCommand(channelName: string) {
     // 3. Check publish targets have required env vars
     for (const target of config.publishTargets) {
       switch (target.platform) {
-        case "ghost":
-          if (env.ghostUrl && env.ghostAdminApiKey) {
-            console.log(chalk.green("  [PASS] Ghost credentials found"));
-          } else {
-            console.log(
-              chalk.red(
-                "  [FAIL] Ghost credentials missing (GHOST_URL, GHOST_ADMIN_API_KEY)"
-              )
-            );
-            hasErrors = true;
-          }
-          break;
-
         case "twitter":
           if (
             env.twitterApiKey &&

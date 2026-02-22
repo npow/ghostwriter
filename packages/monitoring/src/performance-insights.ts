@@ -234,8 +234,8 @@ async function enrichPerformers(
       if (runs[0]?.scores) {
         reviewScores = runs[0].scores as Record<string, number>;
       }
-    } catch {
-      // Non-critical — skip enrichment
+    } catch (err) {
+      logger.debug({ pipelineRunId: item.pipelineRunId, error: err instanceof Error ? err.message : String(err) }, "Skipping performer enrichment (non-critical)");
     }
 
     performers.push({
