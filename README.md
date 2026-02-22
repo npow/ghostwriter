@@ -1,5 +1,6 @@
 # Ghostwriter
 
+[![CI](https://github.com/npow/ghostwriter/actions/workflows/ci.yml/badge.svg)](https://github.com/npow/ghostwriter/actions/workflows/ci.yml)
 [![npm](https://img.shields.io/npm/v/@npow/ghostwriter)](https://www.npmjs.com/package/@npow/ghostwriter)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Node](https://img.shields.io/badge/node-%3E%3D22-brightgreen)](https://nodejs.org)
