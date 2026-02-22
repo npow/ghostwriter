@@ -1,5 +1,10 @@
 # Ghostwriter
 
+[![npm](https://img.shields.io/npm/v/@npow/ghostwriter)](https://www.npmjs.com/package/@npow/ghostwriter)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Node](https://img.shields.io/badge/node-%3E%3D22-brightgreen)](https://nodejs.org)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+
 **Describe what you want to publish. Ghostwriter handles the rest.**
 
 Content creators, solopreneurs, and small teams spend 5-10 hours per article researching, writing, editing, and publishing across platforms. Most AI writing tools produce generic slop that readers immediately recognize as machine-generated.
