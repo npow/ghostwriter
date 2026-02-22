@@ -79,7 +79,7 @@ export async function runPipeline(
 
   // Stage 3: Outline
   callbacks?.onStageStart?.("outline");
-  let { outline, cost: outlineCost } = await runOutlineStage(config, brief);
+  let { outline, cost: outlineCost } = await runOutlineStage(config, brief, performanceContext);
   totalCost += outlineCost;
   callbacks?.onStageComplete?.("outline", outlineCost);
 

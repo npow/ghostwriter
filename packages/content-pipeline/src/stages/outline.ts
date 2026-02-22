@@ -14,7 +14,8 @@ const logger = createChildLogger({ module: "pipeline:outline" });
  */
 export async function runOutlineStage(
   config: ChannelConfig,
-  brief: ResearchBrief
+  brief: ResearchBrief,
+  articleHistory?: string
 ): Promise<{ outline: ContentOutline; cost: number }> {
   logger.info({ channelId: config.id }, "Starting outline stage");
 
@@ -33,7 +34,7 @@ The outline should:
 
 Create an outline that will keep readers engaged throughout. Vary section lengths — some should be short and punchy, others more detailed.
 
-Respond with JSON:
+${articleHistory ? `\n${articleHistory}\n` : ""}Respond with JSON:
 {
   "headline": "Compelling headline",
   "hook": "Opening hook paragraph concept",

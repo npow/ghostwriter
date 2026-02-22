@@ -7,7 +7,9 @@ let _client: Anthropic | null = null;
 
 function getClient(): Anthropic {
   if (!_client) {
-    _client = new Anthropic();
+    _client = new Anthropic({
+      apiKey: process.env.ANTHROPIC_API_KEY || "unused",
+    });
   }
   return _client;
 }
@@ -43,10 +45,10 @@ const PRICING: Record<string, { input: number; output: number }> = {
 };
 
 function detectProvider(): Provider {
-  if (process.env.ANTHROPIC_API_KEY) return "anthropic";
+  if (process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_BASE_URL) return "anthropic";
   if (process.env.GEMINI_API_KEY) return "gemini";
   throw new Error(
-    "No LLM API key found. Set ANTHROPIC_API_KEY or GEMINI_API_KEY."
+    "No LLM provider found. Set ANTHROPIC_API_KEY, ANTHROPIC_BASE_URL, or GEMINI_API_KEY."
   );
 }
 
@@ -151,6 +153,7 @@ export async function callLlm(
 
 /**
  * Call LLM and parse JSON from the response.
+ * Retries up to 2 times on empty content or JSON parse failures.
  */
 export async function callLlmJson<T>(
   tier: ModelTier,
@@ -158,20 +161,46 @@ export async function callLlmJson<T>(
   userPrompt: string,
   options?: { maxTokens?: number; temperature?: number }
 ): Promise<{ data: T; cost: number; model: string }> {
-  const result = await callLlm(tier, systemPrompt, userPrompt, options);
+  const maxRetries = 2;
 
-  // Extract JSON from response (handle markdown code blocks)
-  const jsonMatch = result.content.match(/```(?:json)?\s*([\s\S]*?)```/);
-  const jsonStr = jsonMatch ? jsonMatch[1].trim() : result.content.trim();
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    const result = await callLlm(tier, systemPrompt, userPrompt, options);
 
-  try {
-    const data = JSON.parse(jsonStr) as T;
-    return { data, cost: result.cost, model: result.model };
-  } catch (err) {
-    logger.error(
-      { response: result.content.slice(0, 500) },
-      "Failed to parse JSON from LLM response"
-    );
-    throw new Error(`Failed to parse LLM JSON response: ${err}`);
+    // Retry on empty content
+    if (!result.content.trim()) {
+      if (attempt < maxRetries) {
+        logger.warn(
+          { attempt: attempt + 1, maxRetries },
+          "LLM returned empty content, retrying"
+        );
+        continue;
+      }
+      throw new Error("LLM returned empty content after all retries");
+    }
+
+    // Extract JSON from response (handle markdown code blocks)
+    const jsonMatch = result.content.match(/```(?:json)?\s*([\s\S]*?)```/);
+    const jsonStr = jsonMatch ? jsonMatch[1].trim() : result.content.trim();
+
+    try {
+      const data = JSON.parse(jsonStr) as T;
+      return { data, cost: result.cost, model: result.model };
+    } catch (err) {
+      if (attempt < maxRetries) {
+        logger.warn(
+          { attempt: attempt + 1, maxRetries, parseError: String(err) },
+          "Failed to parse JSON from LLM response, retrying"
+        );
+        continue;
+      }
+      logger.error(
+        { response: result.content.slice(0, 500) },
+        "Failed to parse JSON from LLM response after all retries"
+      );
+      throw new Error(`Failed to parse LLM JSON response: ${err}`);
+    }
   }
+
+  // Unreachable, but TypeScript needs it
+  throw new Error("callLlmJson: unexpected exit from retry loop");
 }

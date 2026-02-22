@@ -1,10 +1,15 @@
-import { loadChannelConfig } from "@auto-blogger/core";
+import {
+  loadChannelConfig,
+  getChannelsDir,
+  loadHistory,
+  appendHistory,
+  formatHistoryForPrompt,
+} from "@auto-blogger/core";
 import { ingestData } from "@auto-blogger/data-ingestion";
 import { runPipeline, analyzeStyleFingerprint } from "@auto-blogger/content-pipeline";
 import { publishAll } from "@auto-blogger/publishing";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { getChannelsDir } from "@auto-blogger/core";
 import chalk from "chalk";
 import ora from "ora";
 
@@ -59,10 +64,21 @@ export async function runCommand(channelName: string, options: RunOptions) {
       }
     }
 
+    // Load article history for deduplication
+    spinner.start("Loading article history...");
+    const history = await loadHistory(config.id);
+    const historyPrompt = formatHistoryForPrompt(history);
+    if (history.length > 0) {
+      spinner.succeed(`Loaded ${history.length} past article(s) for deduplication`);
+    } else {
+      spinner.info("No article history yet — first run for this channel");
+    }
+
     // Run pipeline with progress callbacks
     const result = await runPipeline(config, sources, {
       fingerprint,
       skipAdapt: false,
+      performanceContext: historyPrompt || undefined,
       callbacks: {
         onStageStart: (stage) => {
           spinner.start(`Running ${stage} stage...`);
@@ -143,6 +159,19 @@ export async function runCommand(channelName: string, options: RunOptions) {
           "\n  Content did not pass quality gate. Not publishing."
         )
       );
+    }
+
+    // Append to article history so future runs avoid repeating this topic
+    if (result.passed) {
+      const summary =
+        result.draft.content.slice(0, 200).replace(/\n/g, " ").trim() + "...";
+      await appendHistory(config.id, {
+        headline: result.draft.headline,
+        summary,
+        topics: [config.topic.focus],
+        publishedAt: new Date().toISOString(),
+      });
+      spinner.succeed("Article added to history");
     }
 
     console.log();
