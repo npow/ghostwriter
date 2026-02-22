@@ -1,8 +1,8 @@
 {
-  "name": "@ghostwriter/cli",
+  "name": "@npow/ghostwriter",
   "version": "0.1.0",
-  "private": true,
   "type": "module",
+  "files": ["dist"],
   "bin": {
     "ghostwriter": "./dist/index.js"
   },
