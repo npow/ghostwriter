@@ -63,11 +63,19 @@ Respond with JSON matching this structure:
 }`;
 
   const ranked = rankSources(sources);
+
+  // Truncate each source to keep the prompt within LLM context limits.
+  // 45 sources × 600 chars ≈ 27k chars, well within bounds.
+  const MAX_SOURCE_CHARS = 600;
+
   const sourceData = ranked
     .map((s, i) => {
       const engagement = (s.metadata?.engagementScore as number | undefined);
       const tag = engagement != null ? ` [engagement: ${engagement}]` : "";
-      return `--- Source ${i + 1} [${s.provider}]${tag} ${s.title ?? ""} ---\n${s.content}`;
+      const content = s.content.length > MAX_SOURCE_CHARS
+        ? s.content.slice(0, MAX_SOURCE_CHARS) + "…"
+        : s.content;
+      return `--- Source ${i + 1} [${s.provider}]${tag} ${s.title ?? ""} ---\n${content}`;
     })
     .join("\n\n");
 

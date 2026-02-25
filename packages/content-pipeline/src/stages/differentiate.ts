@@ -32,6 +32,21 @@ export async function runDifferentiationStage(
 ): Promise<{ differentiation: DifferentiationBrief; cost: number }> {
   logger.info({ channelId: config.id }, "Starting differentiation stage");
 
+  // If the research brief is empty, skip the LLM call — it'll just respond conversationally
+  if (!brief.summary && brief.keyFacts.length === 0 && brief.narrativeAngles.length === 0) {
+    logger.warn({ channelId: config.id }, "Research brief is empty, skipping differentiation");
+    return {
+      differentiation: {
+        contentGaps: [],
+        contrariangles: [],
+        uniqueDataInsights: [],
+        hookIdeas: [],
+        avoidTopics: [],
+      },
+      cost: 0,
+    };
+  }
+
   const voice = config.voice;
   const opinions = voice.opinions ?? [];
 

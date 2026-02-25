@@ -182,6 +182,11 @@ export async function callLlmJson<T>(
     const jsonMatch = result.content.match(/```(?:json)?\s*([\s\S]*?)```/);
     const jsonStr = jsonMatch ? jsonMatch[1].trim() : result.content.trim();
 
+    logger.debug(
+      { attempt: attempt + 1, rawLength: result.content.length, jsonLength: jsonStr.length, preview: jsonStr.slice(0, 200) },
+      "Extracted JSON from LLM response"
+    );
+
     try {
       const data = JSON.parse(jsonStr) as T;
       return { data, cost: result.cost, model: result.model };
