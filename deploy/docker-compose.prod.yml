@@ -12,7 +12,7 @@ services:
       # Hugo blog repo (ghostwriter writes posts and pushes)
       - ${HUGO_REPO_PATH:-/root/exitcloud.github.io}:/repos/exitcloud.github.io
       # Ghostwriter state (article history, connections)
-      - ghostwriter-data:/root/.ghostwriter
+      - ${HOME}/.ghostwriter:/root/.ghostwriter
     networks:
       - recon_default
     entrypoint: ["node", "packages/cli/dist/index.js", "run", "exitcloud"]
@@ -20,6 +20,3 @@ services:
 networks:
   recon_default:
     external: true
-
-volumes:
-  ghostwriter-data:
