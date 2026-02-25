@@ -139,6 +139,16 @@ async function extractMissingScores(
   for (const spec of specs) {
     const result = updatedResults.find((r) => r.agent === spec.agent);
     if (!result) continue;
+
+    // Skip agents that returned a default failed result (no real review to score)
+    const isDefaultFailure = Object.keys(result.scores).length === 0
+      && result.feedback.length <= 1
+      && result.feedback.some?.((f) => f.includes("failed to produce valid response"));
+    if (isDefaultFailure) {
+      logger.info({ agent: spec.agent }, "Skipping score extraction for failed agent — using heuristic fallback");
+      continue;
+    }
+
     const missingDims = spec.dimensions.filter(
       (d) => !(d in result.scores) || typeof result.scores[d] !== "number"
     );

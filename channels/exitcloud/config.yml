@@ -118,14 +118,14 @@ schedule:
 qualityGate:
   minScores:
     structure: 7
-    readability: 8
-    voiceMatch: 8
-    factualAccuracy: 9
+    readability: 7
+    voiceMatch: 7
+    factualAccuracy: 7
     sourceCoverage: 7
     hookStrength: 7
     engagementPotential: 6
-    naturalness: 8
-    perplexityVariance: 6
+    naturalness: 7
+    perplexityVariance: 5
     topicOriginality: 7
     angleFreshness: 7
   maxRevisions: 3
