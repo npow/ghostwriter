@@ -70,11 +70,11 @@ export async function runReviewStage(
   }
 
   const agentResults = [
-    editor.result,
-    factChecker.result,
-    engagement.result,
-    aiDetection.result,
-    originality.result,
+    normalizeAgentResult(editor.result, "editor"),
+    normalizeAgentResult(factChecker.result, "fact_checker"),
+    normalizeAgentResult(engagement.result, "engagement"),
+    normalizeAgentResult(aiDetection.result, "ai_detection"),
+    normalizeAgentResult(originality.result, "originality"),
   ];
 
   const aggregateScores = aggregateAllScores(agentResults, config);
@@ -103,6 +103,37 @@ export async function runReviewStage(
   );
 
   return { review, cost: totalCost };
+}
+
+/**
+ * Ensure a review agent result has all required fields.
+ * LLMs through proxies may return non-standard JSON structures.
+ */
+function normalizeAgentResult(
+  raw: ReviewAgentResult,
+  agent: ReviewAgentResult["agent"]
+): ReviewAgentResult {
+  const result = raw as Record<string, unknown>;
+  const scores = (result.scores && typeof result.scores === "object")
+    ? result.scores as Record<string, number>
+    : {};
+  const feedback = Array.isArray(result.feedback)
+    ? result.feedback as string[]
+    : [];
+  const suggestions = Array.isArray(result.suggestions)
+    ? result.suggestions as string[]
+    : [];
+  const passed = typeof result.passed === "boolean"
+    ? result.passed
+    : false;
+
+  return {
+    agent,
+    scores: scores as ReviewAgentResult["scores"],
+    passed,
+    feedback,
+    suggestions,
+  };
 }
 
 function aggregateAllScores(
