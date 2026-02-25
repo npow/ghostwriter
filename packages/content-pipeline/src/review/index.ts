@@ -168,21 +168,21 @@ async function extractMissingScores(
   const scoringPromises = needsScoring.map(async (spec) => {
     const reviewSummary = JSON.stringify(spec.raw, null, 2).slice(0, 3000);
 
-    const systemPrompt = `Read this content review and provide numeric scores (1-10) for each dimension listed below.
+    const systemPrompt = `Read this content review and provide numeric scores (1-10) for each dimension.
 
-SCORING DIMENSIONS:
+DIMENSIONS TO SCORE:
 ${spec.dimensions.map((d) => `- ${d}`).join("\n")}
 
-SCORING GUIDE:
-- 9-10: Exceptional, professional quality, no significant issues
-- 7-8: Good, minor issues only, publishable with small tweaks
-- 5-6: Mediocre, several issues that need addressing
-- 3-4: Poor, major issues, needs significant revision
-- 1-2: Unacceptable, fundamental problems
+CALIBRATION:
+- 8-10: The review is mostly positive for this dimension, issues are minor/stylistic
+- 7: The review mentions some real issues but the content is fundamentally sound
+- 5-6: The review identifies significant problems that need fixing
+- 3-4: The review describes major failures in this dimension
+- 1-2: Only if the review says this dimension is completely broken
 
-Be honest and calibrated. Most decent content scores 6-8.
+IMPORTANT: A thorough review that mentions minor issues still scores 7-8. Detailed feedback does NOT mean low scores — good reviewers are thorough even on good content. Focus on the SEVERITY of issues, not the NUMBER of comments.
 
-Respond with JSON mapping each dimension to a score:
+Respond ONLY with JSON:
 {${spec.dimensions.map((d) => `"${d}": N`).join(", ")}}`;
 
     try {

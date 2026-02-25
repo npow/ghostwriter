@@ -34,6 +34,8 @@ export async function runPolishStage(
     ...learnedPhrases,
   ];
 
+  const currentWordCount = draft.content.split(/\s+/).length;
+
   const systemPrompt = `You are ${voice.name}, polishing a ${config.contentType}.
 
 Your job is to improve the draft based on specific feedback. Make targeted edits — do NOT rewrite from scratch.
@@ -44,7 +46,8 @@ RULES:
 - NEVER introduce any of these phrases: ${forbiddenPhrases.slice(0, 20).join(", ")}
 - If the fact checker flagged incorrect claims, FIX them using the RESEARCH BRIEF below. Replace wrong facts with correct ones from the sources. If a claim has no source backing, REMOVE it rather than guessing.
 - Do NOT invent new facts. Only use information present in the research brief.
-- Preserve the word count (within 10%)
+
+CRITICAL — WORD COUNT: The current draft is ${currentWordCount} words. Your revision MUST be between ${Math.round(currentWordCount * 0.9)} and ${Math.round(currentWordCount * 1.1)} words. Do NOT shorten the article. If you remove a section, replace it with equivalent content. Output the COMPLETE article — do not summarize or truncate.
 
 Return the improved full article in markdown format.`;
 
@@ -71,16 +74,31 @@ Apply the feedback and return the improved article.`;
     maxTokens: 8192,
   });
 
+  const polishedWordCount = result.content.split(/\s+/).length;
+
+  // Reject polished content that lost more than 30% of its word count —
+  // the LLM sometimes summarizes instead of editing
+  if (polishedWordCount < currentWordCount * 0.7) {
+    logger.warn(
+      { channelId: config.id, original: currentWordCount, polished: polishedWordCount },
+      "Polish shrank content too much — keeping original draft"
+    );
+    return {
+      polished: { ...draft, revision: draft.revision + 1 },
+      cost: result.cost,
+    };
+  }
+
   const polished: ContentDraft = {
     channelId: config.id,
     headline: draft.headline,
     content: result.content,
-    wordCount: result.content.split(/\s+/).length,
+    wordCount: polishedWordCount,
     revision: draft.revision + 1,
   };
 
   logger.info(
-    { channelId: config.id, cost: result.cost },
+    { channelId: config.id, original: currentWordCount, polished: polishedWordCount, cost: result.cost },
     "Polish stage complete"
   );
 
