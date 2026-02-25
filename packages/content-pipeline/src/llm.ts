@@ -164,6 +164,48 @@ export async function callLlm(
 }
 
 /**
+ * Parse JSON, handling trailing non-JSON content that LLMs sometimes append.
+ * If strict JSON.parse fails, extract just the JSON object by tracking brace depth.
+ */
+function parseJsonPermissive(str: string): unknown {
+  try {
+    return JSON.parse(str);
+  } catch (err) {
+    // Try to find the end of the JSON object by tracking brace depth
+    if (str.startsWith("{")) {
+      let depth = 0;
+      let inString = false;
+      let escaped = false;
+      for (let i = 0; i < str.length; i++) {
+        const ch = str[i];
+        if (escaped) {
+          escaped = false;
+          continue;
+        }
+        if (ch === "\\") {
+          escaped = true;
+          continue;
+        }
+        if (ch === '"') {
+          inString = !inString;
+          continue;
+        }
+        if (inString) continue;
+        if (ch === "{") depth++;
+        else if (ch === "}") {
+          depth--;
+          if (depth === 0) {
+            const truncated = str.slice(0, i + 1);
+            return JSON.parse(truncated);
+          }
+        }
+      }
+    }
+    throw err;
+  }
+}
+
+/**
  * If the parsed JSON is an object with a single key whose value is also an object,
  * unwrap it. LLMs often wrap responses in a container like {"research_brief": {...}}.
  */
@@ -220,7 +262,7 @@ export async function callLlmJson<T>(
     );
 
     try {
-      let data = JSON.parse(jsonStr);
+      let data = parseJsonPermissive(jsonStr);
       // Unwrap if the LLM nested the response under a single key
       data = unwrapSingleKeyObject(data);
       return { data: data as T, cost: result.cost, model: result.model };

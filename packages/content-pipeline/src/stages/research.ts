@@ -92,12 +92,41 @@ Respond with JSON matching this structure:
   );
 
   // Normalize alternative field names the LLM may use
+  const summary = String(raw.summary ?? raw.executive_summary ?? "");
+
+  // Extract keyFacts from various formats
+  let keyFacts: ResearchBrief["keyFacts"] = [];
+  if (Array.isArray(raw.keyFacts)) {
+    keyFacts = raw.keyFacts as ResearchBrief["keyFacts"];
+  } else if (Array.isArray(raw.key_facts)) {
+    keyFacts = raw.key_facts as ResearchBrief["keyFacts"];
+  } else if (Array.isArray(raw.findings)) {
+    keyFacts = raw.findings as ResearchBrief["keyFacts"];
+  } else if (Array.isArray(raw.key_themes)) {
+    // LLM sometimes returns themes instead of facts — convert them
+    keyFacts = (raw.key_themes as Array<Record<string, unknown>>).map((t) => ({
+      fact: String(t.theme ?? t.title ?? t.summary ?? JSON.stringify(t)),
+      source: String(t.source ?? t.sources ?? "analysis"),
+      sourceUrl: String(t.sourceUrl ?? t.source_url ?? t.url ?? ""),
+    }));
+  }
+
+  // Extract narrative angles from various fields
+  let narrativeAngles: string[] = [];
+  if (Array.isArray(raw.narrativeAngles)) {
+    narrativeAngles = raw.narrativeAngles as string[];
+  } else if (Array.isArray(raw.narrative_angles)) {
+    narrativeAngles = raw.narrative_angles as string[];
+  } else if (Array.isArray(raw.angles)) {
+    narrativeAngles = raw.angles as string[];
+  }
+
   const brief: ResearchBrief = {
     channelId: config.id,
-    summary: (raw.summary ?? raw.executive_summary ?? "") as string,
-    keyFacts: (raw.keyFacts ?? raw.key_facts ?? raw.findings ?? []) as ResearchBrief["keyFacts"],
-    narrativeAngles: (raw.narrativeAngles ?? raw.narrative_angles ?? []) as string[],
-    dataPoints: (raw.dataPoints ?? raw.data_points ?? {}) as Record<string, unknown>,
+    summary,
+    keyFacts,
+    narrativeAngles,
+    dataPoints: (raw.dataPoints ?? raw.data_points ?? raw.data ?? {}) as Record<string, unknown>,
     sources,
   };
 
