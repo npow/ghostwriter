@@ -1,5 +1,8 @@
 import type { ChannelConfig, ContentDraft, ReviewAgentResult } from "@ghostwriter/core";
+import { createChildLogger } from "@ghostwriter/core";
 import { callLlmJson } from "../llm.js";
+
+const logger = createChildLogger({ module: "review:editor" });
 
 /**
  * Editor Review Agent: Evaluates structure, flow, readability, and voice compliance.
@@ -28,14 +31,28 @@ Respond with JSON:
   "suggestions": ["fix 1", "fix 2"]
 }`;
 
-  const { data, cost } = await callLlmJson<Omit<ReviewAgentResult, "agent">>(
-    "sonnet",
-    systemPrompt,
-    `Review this ${config.contentType}:\n\n${draft.content}`
-  );
+  try {
+    const { data, cost } = await callLlmJson<Omit<ReviewAgentResult, "agent">>(
+      "sonnet",
+      systemPrompt,
+      `Review this ${config.contentType}:\n\n${draft.content}`
+    );
 
-  return {
-    result: { agent: "editor", ...data },
-    cost,
-  };
+    return {
+      result: { agent: "editor", ...data },
+      cost,
+    };
+  } catch (err) {
+    logger.warn({ err, channelId: config.id }, "Editor review LLM call failed, returning default failed result");
+    return {
+      result: {
+        agent: "editor",
+        scores: {},
+        passed: false,
+        feedback: ["Editor review agent failed to produce valid response — will retry on next revision"],
+        suggestions: [],
+      },
+      cost: 0,
+    };
+  }
 }

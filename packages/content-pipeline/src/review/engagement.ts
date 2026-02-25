@@ -1,5 +1,8 @@
 import type { ChannelConfig, ContentDraft, ReviewAgentResult } from "@ghostwriter/core";
+import { createChildLogger } from "@ghostwriter/core";
 import { callLlmJson } from "../llm.js";
+
+const logger = createChildLogger({ module: "review:engagement" });
 
 /**
  * Engagement Scorer: Evaluates hook strength, headline quality, and shareability.
@@ -31,14 +34,28 @@ Respond with JSON:
   "suggestions": ["Open with the surprising stat about...", "Add a personal anecdote in section 3"]
 }`;
 
-  const { data, cost } = await callLlmJson<Omit<ReviewAgentResult, "agent">>(
-    "sonnet",
-    systemPrompt,
-    `Review this ${config.contentType} for engagement:\n\nHEADLINE: ${draft.headline}\n\n${draft.content}`
-  );
+  try {
+    const { data, cost } = await callLlmJson<Omit<ReviewAgentResult, "agent">>(
+      "sonnet",
+      systemPrompt,
+      `Review this ${config.contentType} for engagement:\n\nHEADLINE: ${draft.headline}\n\n${draft.content}`
+    );
 
-  return {
-    result: { agent: "engagement", ...data },
-    cost,
-  };
+    return {
+      result: { agent: "engagement", ...data },
+      cost,
+    };
+  } catch (err) {
+    logger.warn({ err, channelId: config.id }, "Engagement review LLM call failed, returning default failed result");
+    return {
+      result: {
+        agent: "engagement",
+        scores: {},
+        passed: false,
+        feedback: ["Engagement review agent failed to produce valid response — will retry on next revision"],
+        suggestions: [],
+      },
+      cost: 0,
+    };
+  }
 }

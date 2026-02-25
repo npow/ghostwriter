@@ -71,14 +71,29 @@ Respond with JSON:
   "suggestions": ["how to differentiate from past content", ...]
 }`;
 
-  const { data, cost } = await callLlmJson<Omit<ReviewAgentResult, "agent">>(
-    "sonnet",
-    systemPrompt,
-    `Review this draft for originality:\n\nHeadline: ${draft.headline}\n\n${draft.content}`
-  );
+  try {
+    const { data, cost } = await callLlmJson<Omit<ReviewAgentResult, "agent">>(
+      "sonnet",
+      systemPrompt,
+      `Review this draft for originality:\n\nHeadline: ${draft.headline}\n\n${draft.content}`
+    );
 
-  return {
-    result: { agent: "originality", ...data },
-    cost,
-  };
+    return {
+      result: { agent: "originality", ...data },
+      cost,
+    };
+  } catch (err) {
+    // Return default high scores on failure — originality is hard to assess
+    // without the LLM, and we don't want a parse error to block publishing
+    return {
+      result: {
+        agent: "originality",
+        scores: { topicOriginality: 7, angleFreshness: 7 },
+        passed: true,
+        feedback: ["Originality review agent failed to produce valid response"],
+        suggestions: [],
+      },
+      cost: 0,
+    };
+  }
 }

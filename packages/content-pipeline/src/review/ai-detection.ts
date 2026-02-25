@@ -5,12 +5,15 @@ import {
   computeBurstiness,
   analyzeParagraphVariation,
   getActivePhrases,
+  createChildLogger,
 } from "@ghostwriter/core";
 import { callLlmJson } from "../llm.js";
 import {
   checkExternalAiDetection,
   passesExternalDetection,
 } from "./external-ai-detection.js";
+
+const logger = createChildLogger({ module: "review:ai-detection" });
 
 /**
  * AI Detection Tester: Multi-layer detection combining:
@@ -130,38 +133,55 @@ Respond with JSON:
     discoveredPatterns?: DiscoveredPattern[];
   }
 
-  const { data, cost } = await callLlmJson<AiDetectionLlmResponse>(
-    "sonnet",
-    systemPrompt,
-    draft.content
-  );
-
-  const llmFeedback = Array.isArray(data.feedback) ? data.feedback : [];
-  const llmSuggestions = Array.isArray(data.suggestions) ? data.suggestions : [];
-  const llmPassed = typeof data.passed === "boolean" ? data.passed : false;
-
-  // Extract scores — LLM may return them under "scores" or as top-level keys
+  let llmFeedback: string[] = [];
+  let llmSuggestions: string[] = [];
+  let llmPassed = false;
   let llmScores: Record<string, number> = {};
-  const raw = data as unknown as Record<string, unknown>;
-  if (raw.scores && typeof raw.scores === "object") {
-    const s = raw.scores as Record<string, unknown>;
-    for (const [k, v] of Object.entries(s)) {
-      if (typeof v === "number") {
-        const camel = k.replace(/_([a-z])/g, (_, c: string) => c.toUpperCase());
-        llmScores[camel] = v;
+  let discoveredPatterns: DiscoveredPattern[] = [];
+  let cost = 0;
+
+  try {
+    const llmResult = await callLlmJson<AiDetectionLlmResponse>(
+      "sonnet",
+      systemPrompt,
+      draft.content
+    );
+    cost = llmResult.cost;
+    const data = llmResult.data;
+
+    llmFeedback = Array.isArray(data.feedback) ? data.feedback : [];
+    llmSuggestions = Array.isArray(data.suggestions) ? data.suggestions : [];
+    llmPassed = typeof data.passed === "boolean" ? data.passed : false;
+
+    // Extract scores — LLM may return them under "scores" or as top-level keys
+    const raw = data as unknown as Record<string, unknown>;
+    if (raw.scores && typeof raw.scores === "object") {
+      const s = raw.scores as Record<string, unknown>;
+      for (const [k, v] of Object.entries(s)) {
+        if (typeof v === "number") {
+          const camel = k.replace(/_([a-z])/g, (_, c: string) => c.toUpperCase());
+          llmScores[camel] = v;
+        }
       }
     }
-  }
-  // Fallback: search top-level and nested for naturalness/perplexityVariance
-  if (!llmScores.naturalness && !llmScores.perplexityVariance) {
-    for (const [k, v] of Object.entries(raw)) {
-      if (typeof v === "number" && v >= 1 && v <= 10) {
-        const lower = k.toLowerCase();
-        if (lower.includes("natural")) llmScores.naturalness = v;
-        else if (lower.includes("perplexity") || lower.includes("variance") || lower.includes("burstiness")) llmScores.perplexityVariance = v;
+    // Fallback: search top-level and nested for naturalness/perplexityVariance
+    if (!llmScores.naturalness && !llmScores.perplexityVariance) {
+      for (const [k, v] of Object.entries(raw)) {
+        if (typeof v === "number" && v >= 1 && v <= 10) {
+          const lower = k.toLowerCase();
+          if (lower.includes("natural")) llmScores.naturalness = v;
+          else if (lower.includes("perplexity") || lower.includes("variance") || lower.includes("burstiness")) llmScores.perplexityVariance = v;
+        }
       }
     }
+
+    discoveredPatterns = (Array.isArray(data.discoveredPatterns) ? data.discoveredPatterns : []).filter(
+      (p) => p.phrase && p.category && typeof p.confidence === "number"
+    );
+  } catch (err) {
+    logger.warn({ err, channelId: config.id }, "AI detection LLM call failed, using heuristic scores only");
   }
+
   // Use heuristic burstiness as fallback score for perplexityVariance
   if (!llmScores.perplexityVariance) {
     llmScores.perplexityVariance = Math.min(10, Math.max(1, Math.round(burstiness.burstinessScore * 10)));
@@ -171,10 +191,6 @@ Respond with JSON:
     const penaltyCount = aiPhrases.length + learnedHits.length + structuralIssues.length;
     llmScores.naturalness = Math.max(1, 8 - penaltyCount);
   }
-
-  const discoveredPatterns: DiscoveredPattern[] = (Array.isArray(data.discoveredPatterns) ? data.discoveredPatterns : []).filter(
-    (p) => p.phrase && p.category && typeof p.confidence === "number"
-  );
 
   // Layer 3: External AI detection (non-blocking — if APIs aren't configured, skip)
   const externalResults = await checkExternalAiDetection(draft.content);

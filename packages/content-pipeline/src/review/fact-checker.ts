@@ -4,7 +4,10 @@ import type {
   ResearchBrief,
   ReviewAgentResult,
 } from "@ghostwriter/core";
+import { createChildLogger } from "@ghostwriter/core";
 import { callLlmJson } from "../llm.js";
+
+const logger = createChildLogger({ module: "review:fact-checker" });
 
 /**
  * Fact-Checker Review Agent: Verifies every claim traces back to source data.
@@ -47,14 +50,28 @@ ${draft.content}
 
 Check every factual claim in the draft against the research brief.`;
 
-  const { data, cost } = await callLlmJson<Omit<ReviewAgentResult, "agent">>(
-    "sonnet",
-    systemPrompt,
-    userPrompt
-  );
+  try {
+    const { data, cost } = await callLlmJson<Omit<ReviewAgentResult, "agent">>(
+      "sonnet",
+      systemPrompt,
+      userPrompt
+    );
 
-  return {
-    result: { agent: "fact_checker", ...data },
-    cost,
-  };
+    return {
+      result: { agent: "fact_checker", ...data },
+      cost,
+    };
+  } catch (err) {
+    logger.warn({ err, channelId: config.id }, "Fact-checker review LLM call failed, returning default failed result");
+    return {
+      result: {
+        agent: "fact_checker",
+        scores: {},
+        passed: false,
+        feedback: ["Fact-checker review agent failed to produce valid response — will retry on next revision"],
+        suggestions: [],
+      },
+      cost: 0,
+    };
+  }
 }
