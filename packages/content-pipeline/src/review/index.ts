@@ -85,7 +85,7 @@ export async function runReviewStage(
     { agent: "editor", raw: editor.result, dimensions: ["structure", "readability", "voiceMatch"] },
     { agent: "fact_checker", raw: factChecker.result, dimensions: ["factualAccuracy", "sourceCoverage"] },
     { agent: "engagement", raw: engagement.result, dimensions: ["hookStrength", "engagementPotential"] },
-  ]);
+  ], draft.content);
   totalCost += scoringResults.cost;
   agentResults = scoringResults.results;
 
@@ -127,15 +127,32 @@ interface AgentScoringSpec {
   dimensions: string[];
 }
 
+/**
+ * Dimension descriptions for the scoring LLM.
+ * Maps dimension names to what the scorer should evaluate.
+ */
+const DIMENSION_DESCRIPTIONS: Record<string, string> = {
+  structure: "Organization, flow between sections, strong intro/conclusion, logical progression",
+  readability: "Sentence variety, clear language, appropriate for technical audience, easy to follow",
+  voiceMatch: "Sounds like a real developer sharing experience, conversational tone, opinionated",
+  factualAccuracy: "Claims are specific and verifiable, no vague hand-waving, data points cited",
+  sourceCoverage: "Uses available data effectively, doesn't ignore key facts",
+  hookStrength: "Opening grabs attention, creates curiosity or urgency in first 2 sentences",
+  engagementPotential: "Would readers share/comment/save? Provokes thought or emotion?",
+};
+
 async function extractMissingScores(
   agentResults: ReviewAgentResult[],
   specs: AgentScoringSpec[],
+  draftContent: string,
 ): Promise<{ results: ReviewAgentResult[]; cost: number }> {
   let totalScoringCost = 0;
   const updatedResults = [...agentResults];
 
-  // Find agents that need scoring (missing expected dimensions)
-  const needsScoring: AgentScoringSpec[] = [];
+  // Collect ALL missing dimensions across agents into a single scoring call
+  const allMissingDims: string[] = [];
+  const agentDimMap: Record<string, string[]> = {};
+
   for (const spec of specs) {
     const result = updatedResults.find((r) => r.agent === spec.agent);
     if (!result) continue;
@@ -153,78 +170,79 @@ async function extractMissingScores(
       (d) => !(d in result.scores) || typeof result.scores[d] !== "number"
     );
     if (missingDims.length > 0) {
-      needsScoring.push({ ...spec, dimensions: missingDims });
+      agentDimMap[spec.agent] = missingDims;
+      allMissingDims.push(...missingDims);
     }
   }
 
-  if (needsScoring.length === 0) return { results: updatedResults, cost: 0 };
+  if (allMissingDims.length === 0) return { results: updatedResults, cost: 0 };
 
+  const uniqueDims = [...new Set(allMissingDims)];
   logger.info(
-    { agents: needsScoring.map((s) => s.agent), dims: needsScoring.map((s) => s.dimensions) },
-    "Extracting missing scores via LLM"
+    { dimensions: uniqueDims, agents: Object.keys(agentDimMap) },
+    "Extracting missing scores via direct content evaluation"
   );
 
-  // Run scoring calls in parallel for all agents that need them
-  const scoringPromises = needsScoring.map(async (spec) => {
-    const reviewSummary = JSON.stringify(spec.raw, null, 2).slice(0, 3000);
+  // Single LLM call: score the CONTENT directly on all missing dimensions
+  const dimDescriptions = uniqueDims
+    .map((d) => `- **${d}**: ${DIMENSION_DESCRIPTIONS[d] ?? d}`)
+    .join("\n");
 
-    const systemPrompt = `Read this content review and provide numeric scores (1-10) for each dimension.
+  const systemPrompt = `Score this article on each dimension (1-10). Read the ACTUAL CONTENT and evaluate directly.
 
-DIMENSIONS TO SCORE:
-${spec.dimensions.map((d) => `- ${d}`).join("\n")}
+DIMENSIONS:
+${dimDescriptions}
 
-CALIBRATION:
-- 8-10: The review is mostly positive for this dimension, issues are minor/stylistic
-- 7: The review mentions some real issues but the content is fundamentally sound
-- 5-6: The review identifies significant problems that need fixing
-- 3-4: The review describes major failures in this dimension
-- 1-2: Only if the review says this dimension is completely broken
+SCORING GUIDE:
+- 9-10: Excellent. Professional quality, engaging, would publish as-is.
+- 7-8: Good. Minor issues, clearly publishable with small tweaks.
+- 6: Decent but has noticeable gaps or rough spots.
+- 4-5: Below average. Significant issues need addressing.
+- 1-3: Poor. Fundamental problems.
 
-IMPORTANT: A thorough review that mentions minor issues still scores 7-8. Detailed feedback does NOT mean low scores — good reviewers are thorough even on good content. Focus on the SEVERITY of issues, not the NUMBER of comments.
+Most well-written articles with clear structure and good voice score 7-8.
 
 Respond ONLY with JSON:
-{${spec.dimensions.map((d) => `"${d}": N`).join(", ")}}`;
+{${uniqueDims.map((d) => `"${d}": N`).join(", ")}}`;
 
-    try {
-      const { data, cost } = await callLlmJson<Record<string, number>>(
-        "sonnet",
-        systemPrompt,
-        `REVIEW TO SCORE:\n${reviewSummary}`
-      );
-
-      const scores: Record<string, number> = {};
-      for (const dim of spec.dimensions) {
-        // Check both camelCase and snake_case
-        const snakeKey = dim.replace(/[A-Z]/g, (c) => `_${c.toLowerCase()}`);
-        const val = data[dim] ?? data[snakeKey];
-        if (typeof val === "number" && val >= 1 && val <= 10) {
-          scores[dim] = val;
-        }
-      }
-
-      return { agent: spec.agent, scores, cost };
-    } catch (err) {
-      logger.warn({ agent: spec.agent, err }, "Score extraction LLM call failed");
-      return { agent: spec.agent, scores: {} as Record<string, number>, cost: 0 };
-    }
-  });
-
-  const scoringResults = await Promise.all(scoringPromises);
-
-  // Merge extracted scores back into agent results
-  for (const { agent, scores, cost } of scoringResults) {
+  try {
+    // Send first 4000 chars of content for scoring (enough to evaluate quality)
+    const contentSample = draftContent.slice(0, 4000);
+    const { data, cost } = await callLlmJson<Record<string, number>>(
+      "sonnet",
+      systemPrompt,
+      contentSample
+    );
     totalScoringCost += cost;
-    const idx = updatedResults.findIndex((r) => r.agent === agent);
-    if (idx >= 0 && Object.keys(scores).length > 0) {
-      updatedResults[idx] = {
-        ...updatedResults[idx],
-        scores: { ...updatedResults[idx].scores, ...scores },
-      };
-      logger.info(
-        { agent, extractedScores: scores, cost },
-        "Extracted scores from review"
-      );
+
+    const extractedScores: Record<string, number> = {};
+    for (const dim of uniqueDims) {
+      const snakeKey = dim.replace(/[A-Z]/g, (c) => `_${c.toLowerCase()}`);
+      const val = data[dim] ?? data[snakeKey];
+      if (typeof val === "number" && val >= 1 && val <= 10) {
+        extractedScores[dim] = val;
+      }
     }
+
+    logger.info({ extractedScores, cost }, "Direct content scoring complete");
+
+    // Distribute scores to the agents that own each dimension
+    for (const [agent, dims] of Object.entries(agentDimMap)) {
+      const idx = updatedResults.findIndex((r) => r.agent === agent);
+      if (idx < 0) continue;
+      const agentScores: Record<string, number> = {};
+      for (const dim of dims) {
+        if (dim in extractedScores) agentScores[dim] = extractedScores[dim];
+      }
+      if (Object.keys(agentScores).length > 0) {
+        updatedResults[idx] = {
+          ...updatedResults[idx],
+          scores: { ...updatedResults[idx].scores, ...agentScores },
+        };
+      }
+    }
+  } catch (err) {
+    logger.warn({ err }, "Direct content scoring LLM call failed");
   }
 
   return { results: updatedResults, cost: totalScoringCost };
