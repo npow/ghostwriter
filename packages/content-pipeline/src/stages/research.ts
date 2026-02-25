@@ -4,7 +4,7 @@ import type {
   ResearchBrief,
 } from "@ghostwriter/core";
 import { createChildLogger } from "@ghostwriter/core";
-import { callLlmJson } from "../llm.js";
+import { callLlmJson, findArraysOfObjects, findStringArrays, findLongestString, snakeToCamel } from "../llm.js";
 
 const logger = createChildLogger({ module: "pipeline:research" });
 
@@ -91,42 +91,61 @@ Respond with JSON matching this structure:
     userPrompt
   );
 
-  // Normalize alternative field names the LLM may use
-  const summary = String(raw.summary ?? raw.executive_summary ?? "");
+  // ─── Shape-based normalization ───
+  // Instead of guessing field names, search the response by data shape.
 
-  // Extract keyFacts from various formats
+  // 1. Summary: find the longest string (likely the overview/summary)
+  const summary = String(raw.summary ?? raw.executive_summary ?? raw.overview ?? "")
+    || findLongestString(raw);
+
+  // 2. keyFacts: find arrays of objects, then pick the one that looks like facts
   let keyFacts: ResearchBrief["keyFacts"] = [];
-  if (Array.isArray(raw.keyFacts)) {
-    keyFacts = raw.keyFacts as ResearchBrief["keyFacts"];
-  } else if (Array.isArray(raw.key_facts)) {
-    keyFacts = raw.key_facts as ResearchBrief["keyFacts"];
-  } else if (Array.isArray(raw.findings)) {
-    keyFacts = raw.findings as ResearchBrief["keyFacts"];
-  } else if (Array.isArray(raw.key_themes)) {
-    // LLM sometimes returns themes instead of facts — convert them
-    keyFacts = (raw.key_themes as Array<Record<string, unknown>>).map((t) => ({
-      fact: String(t.theme ?? t.title ?? t.summary ?? JSON.stringify(t)),
-      source: String(t.source ?? t.sources ?? "analysis"),
-      sourceUrl: String(t.sourceUrl ?? t.source_url ?? t.url ?? ""),
-    }));
+  // First try explicit field names (fast path)
+  const explicitFactsKey = Object.keys(raw).find((k) => {
+    const camel = snakeToCamel(k);
+    return ["keyFacts", "findings", "keyThemes", "facts", "researchFindings", "primaryTopics", "topics", "keyFindings", "insights"].includes(camel);
+  });
+  if (explicitFactsKey && Array.isArray(raw[explicitFactsKey])) {
+    keyFacts = normalizeFactArray(raw[explicitFactsKey] as unknown[]);
+  }
+  // Fallback: find the largest array of objects in the entire response
+  if (keyFacts.length === 0) {
+    const objectArrays = findArraysOfObjects(raw);
+    for (const arr of objectArrays) {
+      const normalized = normalizeFactArray(arr);
+      if (normalized.length > 0) {
+        keyFacts = normalized;
+        break;
+      }
+    }
   }
 
-  // Extract narrative angles from various fields
+  // 3. narrativeAngles: find string arrays
   let narrativeAngles: string[] = [];
-  if (Array.isArray(raw.narrativeAngles)) {
-    narrativeAngles = raw.narrativeAngles as string[];
-  } else if (Array.isArray(raw.narrative_angles)) {
-    narrativeAngles = raw.narrative_angles as string[];
-  } else if (Array.isArray(raw.angles)) {
-    narrativeAngles = raw.angles as string[];
+  const explicitAnglesKey = Object.keys(raw).find((k) => {
+    const camel = snakeToCamel(k);
+    return ["narrativeAngles", "angles", "suggestedAngles", "contentAngles", "perspectives"].includes(camel);
+  });
+  if (explicitAnglesKey && Array.isArray(raw[explicitAnglesKey])) {
+    narrativeAngles = (raw[explicitAnglesKey] as unknown[]).filter((x): x is string => typeof x === "string");
   }
+  if (narrativeAngles.length === 0) {
+    // Find string arrays that aren't the keyFacts source fields
+    const stringArrays = findStringArrays(raw);
+    if (stringArrays.length > 0) {
+      narrativeAngles = stringArrays[0];
+    }
+  }
+
+  // 4. dataPoints: find any remaining object that isn't an array
+  const dataPoints = (raw.dataPoints ?? raw.data_points ?? raw.data ?? raw.statistics ?? {}) as Record<string, unknown>;
 
   const brief: ResearchBrief = {
     channelId: config.id,
     summary,
     keyFacts,
     narrativeAngles,
-    dataPoints: (raw.dataPoints ?? raw.data_points ?? raw.data ?? {}) as Record<string, unknown>,
+    dataPoints,
     sources,
   };
 
@@ -136,4 +155,34 @@ Respond with JSON matching this structure:
   );
 
   return { brief, cost };
+}
+
+/**
+ * Normalize an array of unknown objects into fact objects.
+ * Handles many different field name conventions the LLM might use.
+ */
+function normalizeFactArray(arr: unknown[]): ResearchBrief["keyFacts"] {
+  return arr
+    .filter((item): item is Record<string, unknown> => !!item && typeof item === "object" && !Array.isArray(item))
+    .map((obj) => {
+      // Find the main fact/description text — try many possible field names
+      const fact = String(
+        obj.fact ?? obj.finding ?? obj.theme ?? obj.title ?? obj.description
+        ?? obj.summary ?? obj.topic ?? obj.insight ?? obj.point ?? obj.content
+        ?? obj.key_fact ?? obj.key_finding ?? obj.observation ?? obj.detail
+        ?? ""
+      );
+      if (!fact) return null;
+
+      const source = String(
+        obj.source ?? obj.sources ?? obj.sourceUrl ?? obj.source_url ?? obj.url
+        ?? obj.reference ?? obj.origin ?? "analysis"
+      );
+      const sourceUrl = String(
+        obj.sourceUrl ?? obj.source_url ?? obj.url ?? obj.link ?? obj.href ?? ""
+      );
+
+      return { fact, source, sourceUrl };
+    })
+    .filter((x): x is NonNullable<typeof x> => x !== null && x.fact.length > 0);
 }

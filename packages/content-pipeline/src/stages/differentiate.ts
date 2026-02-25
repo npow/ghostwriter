@@ -108,13 +108,17 @@ ${brief.narrativeAngles.join("\n")}`;
     userPrompt
   );
 
-  // Ensure all fields are present even if the LLM omitted some
+  // Normalize: handle both camelCase and snake_case from LLM
+  const r = raw as Record<string, unknown>;
+  const asArr = (v: unknown): string[] =>
+    Array.isArray(v) ? (v as string[]) : [];
+
   const data: DifferentiationBrief = {
-    contentGaps: raw.contentGaps ?? [],
-    contrariangles: raw.contrariangles ?? [],
-    uniqueDataInsights: raw.uniqueDataInsights ?? [],
-    hookIdeas: raw.hookIdeas ?? [],
-    avoidTopics: raw.avoidTopics ?? [],
+    contentGaps: asArr(r.contentGaps ?? r.content_gaps ?? r.gaps ?? []),
+    contrariangles: asArr(r.contrariangles ?? r.contrarian_angles ?? r.hotTakes ?? r.hot_takes ?? []),
+    uniqueDataInsights: asArr(r.uniqueDataInsights ?? r.unique_data_insights ?? r.uniqueInsights ?? r.unique_insights ?? r.insights ?? []),
+    hookIdeas: asArr(r.hookIdeas ?? r.hook_ideas ?? r.hooks ?? []),
+    avoidTopics: asArr(r.avoidTopics ?? r.avoid_topics ?? r.topicsToAvoid ?? r.topics_to_avoid ?? []),
   };
 
   logger.info(

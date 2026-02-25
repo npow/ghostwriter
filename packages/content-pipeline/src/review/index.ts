@@ -8,6 +8,7 @@ import type {
   PublicationHistory,
 } from "@ghostwriter/core";
 import { createChildLogger, mergeDiscoveredPatterns } from "@ghostwriter/core";
+import { findScoreMaps, normalizeScoreKeys, findStringArrays } from "../llm.js";
 import { runEditorReview } from "./editor.js";
 import { runFactCheckerReview } from "./fact-checker.js";
 import { runEngagementReview } from "./engagement.js";
@@ -108,23 +109,67 @@ export async function runReviewStage(
 /**
  * Ensure a review agent result has all required fields.
  * LLMs through proxies may return non-standard JSON structures.
+ * Uses shape-based extraction as fallback when explicit fields are missing.
  */
 function normalizeAgentResult(
   raw: ReviewAgentResult,
   agent: ReviewAgentResult["agent"]
 ): ReviewAgentResult {
   const result = raw as Record<string, unknown>;
-  const scores = (result.scores && typeof result.scores === "object")
-    ? result.scores as Record<string, number>
-    : {};
-  const feedback = Array.isArray(result.feedback)
-    ? result.feedback as string[]
-    : [];
-  const suggestions = Array.isArray(result.suggestions)
-    ? result.suggestions as string[]
-    : [];
+
+  // 1. Extract scores — try explicit "scores" field, then search recursively
+  let scores: Record<string, number> = {};
+  if (result.scores && typeof result.scores === "object" && !Array.isArray(result.scores)) {
+    scores = normalizeScoreKeys(result.scores as Record<string, number>);
+  } else {
+    // Search for any object with numeric values 1-10 (a score map)
+    const found = findScoreMaps(result);
+    if (found.length > 0) {
+      scores = normalizeScoreKeys(found[0]);
+    } else {
+      // Last resort: look for top-level numeric values that could be scores
+      const topLevel: Record<string, number> = {};
+      for (const [key, value] of Object.entries(result)) {
+        if (typeof value === "number" && value >= 1 && value <= 10 && key !== "revision") {
+          topLevel[key] = value;
+        }
+      }
+      if (Object.keys(topLevel).length >= 2) {
+        scores = normalizeScoreKeys(topLevel);
+      }
+    }
+  }
+
+  // 2. Extract feedback — try explicit, then find string arrays
+  let feedback: string[] = [];
+  if (Array.isArray(result.feedback)) {
+    feedback = result.feedback as string[];
+  } else if (Array.isArray(result.issues)) {
+    feedback = result.issues as string[];
+  } else if (Array.isArray(result.problems)) {
+    feedback = result.problems as string[];
+  } else {
+    const stringArrays = findStringArrays(result);
+    if (stringArrays.length > 0) {
+      feedback = stringArrays[0];
+    }
+  }
+
+  // 3. Extract suggestions
+  let suggestions: string[] = [];
+  if (Array.isArray(result.suggestions)) {
+    suggestions = result.suggestions as string[];
+  } else if (Array.isArray(result.recommendations)) {
+    suggestions = result.recommendations as string[];
+  } else if (Array.isArray(result.improvements)) {
+    suggestions = result.improvements as string[];
+  }
+
+  // 4. Extract passed
   const passed = typeof result.passed === "boolean"
     ? result.passed
+    : typeof result.pass === "boolean"
+    ? result.pass
     : false;
 
   return {

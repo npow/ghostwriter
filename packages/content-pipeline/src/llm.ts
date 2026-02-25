@@ -256,7 +256,7 @@ export async function callLlmJson<T>(
     const jsonMatch = result.content.match(/```(?:json)?\s*([\s\S]*?)```/);
     const jsonStr = jsonMatch ? jsonMatch[1].trim() : result.content.trim();
 
-    logger.info(
+    logger.debug(
       { attempt: attempt + 1, rawLength: result.content.length, jsonLength: jsonStr.length, usedCodeBlock: !!jsonMatch, preview: jsonStr.slice(0, 300) },
       "Extracted JSON from LLM response"
     );
@@ -284,4 +284,170 @@ export async function callLlmJson<T>(
 
   // Unreachable, but TypeScript needs it
   throw new Error("callLlmJson: unexpected exit from retry loop");
+}
+
+// ─── Shape-based JSON normalization utilities ───
+// These recursively search parsed JSON for data matching expected shapes,
+// regardless of what field names the LLM used.
+
+/**
+ * Recursively find all arrays of objects in a parsed JSON structure.
+ * Returns them sorted by length (longest first).
+ */
+export function findArraysOfObjects(data: unknown, maxDepth = 4): Array<Record<string, unknown>[]> {
+  const results: Array<Record<string, unknown>[]> = [];
+  _collectArraysOfObjects(data, results, 0, maxDepth);
+  return results.sort((a, b) => b.length - a.length);
+}
+
+function _collectArraysOfObjects(
+  data: unknown,
+  results: Array<Record<string, unknown>[]>,
+  depth: number,
+  maxDepth: number,
+): void {
+  if (depth > maxDepth || !data || typeof data !== "object") return;
+
+  if (Array.isArray(data)) {
+    // Check if this is an array of objects (not primitives)
+    if (data.length > 0 && data.every((item) => item && typeof item === "object" && !Array.isArray(item))) {
+      results.push(data as Record<string, unknown>[]);
+    }
+    // Recurse into array elements
+    for (const item of data) {
+      _collectArraysOfObjects(item, results, depth + 1, maxDepth);
+    }
+  } else {
+    // Recurse into object values
+    for (const value of Object.values(data as Record<string, unknown>)) {
+      _collectArraysOfObjects(value, results, depth + 1, maxDepth);
+    }
+  }
+}
+
+/**
+ * Recursively find all string arrays in a parsed JSON structure.
+ * Returns them sorted by length (longest first).
+ */
+export function findStringArrays(data: unknown, maxDepth = 4): string[][] {
+  const results: string[][] = [];
+  _collectStringArrays(data, results, 0, maxDepth);
+  return results.sort((a, b) => b.length - a.length);
+}
+
+function _collectStringArrays(
+  data: unknown,
+  results: string[][],
+  depth: number,
+  maxDepth: number,
+): void {
+  if (depth > maxDepth || !data || typeof data !== "object") return;
+
+  if (Array.isArray(data)) {
+    if (data.length > 0 && data.every((item) => typeof item === "string")) {
+      results.push(data as string[]);
+    }
+    for (const item of data) {
+      if (typeof item === "object") {
+        _collectStringArrays(item, results, depth + 1, maxDepth);
+      }
+    }
+  } else {
+    for (const value of Object.values(data as Record<string, unknown>)) {
+      _collectStringArrays(value, results, depth + 1, maxDepth);
+    }
+  }
+}
+
+/**
+ * Recursively find the longest string value in a parsed JSON structure.
+ * Useful for finding summaries regardless of field name.
+ */
+export function findLongestString(data: unknown, maxDepth = 3): string {
+  let longest = "";
+  _findLongestString(data, 0, maxDepth, (s) => {
+    if (s.length > longest.length) longest = s;
+  });
+  return longest;
+}
+
+function _findLongestString(
+  data: unknown,
+  depth: number,
+  maxDepth: number,
+  cb: (s: string) => void,
+): void {
+  if (depth > maxDepth || !data) return;
+
+  if (typeof data === "string") {
+    cb(data);
+    return;
+  }
+
+  if (typeof data !== "object") return;
+
+  if (Array.isArray(data)) {
+    for (const item of data) {
+      _findLongestString(item, depth + 1, maxDepth, cb);
+    }
+  } else {
+    for (const value of Object.values(data as Record<string, unknown>)) {
+      _findLongestString(value, depth + 1, maxDepth, cb);
+    }
+  }
+}
+
+/**
+ * Recursively find all objects with numeric values (score maps).
+ * Returns objects where most values are numbers between 1-10.
+ */
+export function findScoreMaps(data: unknown, maxDepth = 3): Record<string, number>[] {
+  const results: Record<string, number>[] = [];
+  _collectScoreMaps(data, results, 0, maxDepth);
+  return results;
+}
+
+function _collectScoreMaps(
+  data: unknown,
+  results: Record<string, number>[],
+  depth: number,
+  maxDepth: number,
+): void {
+  if (depth > maxDepth || !data || typeof data !== "object" || Array.isArray(data)) return;
+
+  const obj = data as Record<string, unknown>;
+  const entries = Object.entries(obj);
+  const numericEntries = entries.filter(([, v]) => typeof v === "number" && v >= 1 && v <= 10);
+
+  // If most entries are numeric scores (1-10), this looks like a score map
+  if (numericEntries.length >= 2 && numericEntries.length >= entries.length * 0.5) {
+    const scoreMap: Record<string, number> = {};
+    for (const [key, value] of numericEntries) {
+      scoreMap[key] = value as number;
+    }
+    results.push(scoreMap);
+  }
+
+  // Recurse into nested objects
+  for (const value of Object.values(obj)) {
+    _collectScoreMaps(value, results, depth + 1, maxDepth);
+  }
+}
+
+/**
+ * Convert snake_case keys to camelCase.
+ */
+export function snakeToCamel(str: string): string {
+  return str.replace(/_([a-z])/g, (_, c: string) => c.toUpperCase());
+}
+
+/**
+ * Convert all keys in a score map from snake_case to camelCase.
+ */
+export function normalizeScoreKeys(scores: Record<string, number>): Record<string, number> {
+  const normalized: Record<string, number> = {};
+  for (const [key, value] of Object.entries(scores)) {
+    normalized[snakeToCamel(key)] = value;
+  }
+  return normalized;
 }
