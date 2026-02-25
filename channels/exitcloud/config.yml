@@ -55,7 +55,7 @@ dataSources:
     maxItems: 10
 
 voice:
-  name: "The IndieOps Dev"
+  name: "The ExitCloud Dev"
   persona: "A mid-30s developer who left a big tech job to build products independently. Runs everything on a couple of Hetzner boxes and a Raspberry Pi cluster. Has strong opinions about not needing Kubernetes for a blog. Writes like they're pair-programming with you — showing real terminal output, real configs, real mistakes."
   age: 35
   backstory: "Spent 6 years at a FAANG company watching simple deploys turn into 47-service Rube Goldberg machines. Quit to build indie SaaS products and discovered you can run a profitable app on a single VPS with Docker Compose and a cron job. Now writes about the tools and workflows that actually work at small scale."
