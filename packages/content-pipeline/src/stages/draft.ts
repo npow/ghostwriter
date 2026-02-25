@@ -61,6 +61,7 @@ ${forbiddenPhrases.map((p) => `   - "${p}"`).join("\n")}
 9. Avoid the 5-paragraph essay structure. Don't mirror section lengths. Some sections should be 2 sentences, others 8+.
 10. Never use a numbered list of "key takeaways" or "key points" — weave insights into the narrative instead.
 11. INLINE SOURCE LINKS: When citing a specific claim, tool, project, or data point that has a sourceUrl in the research brief, link to it naturally using markdown links. For example: "[37signals moved 5 petabytes](https://url)". Every major claim should link to its source. Do NOT dump a list of links at the end — weave them into the text where the claim appears.
+12. QUICK-REFERENCE SUMMARY: Near the end of the article (before any FAQ), include a "## Cheat Sheet" or "## Quick Reference" section. This should be a scannable markdown table or tight bullet list that recaps every tool, technique, or actionable tip mentioned in the article — with one-line descriptions and links. Readers skim long posts; this section lets them find the needle in the haystack. Keep it factual and dense — no fluff, no commentary, just the goods.
 
 ${revision ? `REVISION ${revision.number}: Address this feedback:\n${revision.feedback.map((f) => `- ${f}`).join("\n")}` : ""}
 

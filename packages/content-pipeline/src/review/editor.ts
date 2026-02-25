@@ -12,7 +12,7 @@ export async function runEditorReview(
 
 Evaluate the following aspects:
 
-1. **Structure** (1-10): Is the piece well-organized? Good flow between sections? Strong intro and conclusion?
+1. **Structure** (1-10): Is the piece well-organized? Good flow between sections? Strong intro and conclusion? IMPORTANT: The article MUST include a "Cheat Sheet" or "Quick Reference" summary section near the end (before any FAQ). This should be a scannable table or bullet list recapping every tool, technique, or tip mentioned. If this section is missing, cap the structure score at 5. If it exists but is incomplete (missing tools/tips from the body), cap at 7.
 2. **Readability** (1-10): Is it easy to read? Good sentence variety? Clear language? Appropriate for the target audience?
 3. **Voice Match** (1-10): Does it sound like ${config.voice.name}? Tone: ${config.voice.tone}. ${config.voice.persona}
 
