@@ -70,21 +70,6 @@ export async function runReviewStage(
       });
   }
 
-  // Log raw results to debug score extraction
-  for (const [name, raw] of [
-    ["editor", editor.result],
-    ["fact_checker", factChecker.result],
-    ["engagement", engagement.result],
-    ["ai_detection", aiDetection.result],
-    ["originality", originality.result],
-  ] as const) {
-    const r = raw as Record<string, unknown>;
-    logger.info(
-      { agent: name, hasScores: !!r.scores, scoreKeys: r.scores ? Object.keys(r.scores as object) : [], topLevelKeys: Object.keys(r).filter(k => k !== "agent") },
-      "Raw review agent result"
-    );
-  }
-
   const agentResults = [
     normalizeAgentResult(editor.result, "editor"),
     normalizeAgentResult(factChecker.result, "fact_checker"),
