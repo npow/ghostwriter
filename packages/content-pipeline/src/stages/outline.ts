@@ -4,7 +4,7 @@ import type {
   ContentOutline,
 } from "@ghostwriter/core";
 import { createChildLogger } from "@ghostwriter/core";
-import { callLlmJson } from "../llm.js";
+import { callLlmJson, findArraysOfObjects, findLongestString } from "../llm.js";
 
 const logger = createChildLogger({ module: "pipeline:outline" });
 
@@ -58,24 +58,58 @@ ${articleHistory ? `\n${articleHistory}\n` : ""}Respond with JSON:
     userPrompt
   );
 
-  // Extract sections from various LLM response structures
+  // ─── Shape-based section extraction ───
+  // The LLM uses different key names for sections across runs.
+  // Try explicit keys first, then fall back to finding any array of objects.
   let sections: ContentOutline["sections"] = [];
-  if (Array.isArray(raw.sections)) {
-    sections = raw.sections as ContentOutline["sections"];
-  } else if (Array.isArray(raw.outline)) {
-    // LLM sometimes uses "outline" as the sections array
-    sections = (raw.outline as Array<Record<string, unknown>>).map((s) => ({
-      title: String(s.title ?? s.heading ?? s.section ?? ""),
+
+  const normalizeSections = (arr: Array<Record<string, unknown>>): ContentOutline["sections"] =>
+    arr.map((s) => ({
+      title: String(s.title ?? s.heading ?? s.section ?? s.name ?? s.sectionTitle ?? s.section_title ?? ""),
       keyPoints: Array.isArray(s.keyPoints) ? s.keyPoints as string[]
         : Array.isArray(s.key_points) ? s.key_points as string[]
         : Array.isArray(s.points) ? s.points as string[]
+        : Array.isArray(s.topics) ? s.topics as string[]
+        : Array.isArray(s.content) ? s.content as string[]
         : [],
-      assignedDataPoints: Array.isArray(s.assignedDataPoints) ? s.assignedDataPoints as string[] : [],
-      targetWordCount: (s.targetWordCount ?? s.target_word_count ?? 250) as number,
-    }));
+      assignedDataPoints: Array.isArray(s.assignedDataPoints) ? s.assignedDataPoints as string[]
+        : Array.isArray(s.assigned_data_points) ? s.assigned_data_points as string[]
+        : Array.isArray(s.dataPoints) ? s.dataPoints as string[]
+        : Array.isArray(s.data_points) ? s.data_points as string[]
+        : [],
+      targetWordCount: (s.targetWordCount ?? s.target_word_count ?? s.wordCount ?? s.word_count ?? 250) as number,
+    })).filter((s) => s.title.length > 0);
+
+  // Try explicit key names
+  for (const key of ["sections", "outline", "content_sections", "body", "body_sections", "main_sections"]) {
+    if (Array.isArray(raw[key]) && (raw[key] as unknown[]).length > 0) {
+      sections = normalizeSections(raw[key] as Array<Record<string, unknown>>);
+      if (sections.length > 0) break;
+    }
   }
 
-  const headline = String(raw.headline ?? raw.title ?? raw.working_title ?? "");
+  // Fallback: find any array of objects that looks like sections
+  if (sections.length === 0) {
+    const objectArrays = findArraysOfObjects(raw);
+    for (const arr of objectArrays) {
+      // A section array should have objects with title-like fields
+      if (arr.some((obj) => obj.title || obj.heading || obj.section || obj.name || obj.sectionTitle)) {
+        sections = normalizeSections(arr);
+        if (sections.length > 0) break;
+      }
+    }
+  }
+
+  // Log what keys we found if sections are still empty
+  if (sections.length === 0) {
+    logger.warn(
+      { channelId: config.id, rawKeys: Object.keys(raw), rawKeysTypes: Object.fromEntries(Object.entries(raw).map(([k, v]) => [k, Array.isArray(v) ? `array(${(v as unknown[]).length})` : typeof v])) },
+      "Could not extract sections from outline response"
+    );
+  }
+
+  const headline = String(raw.headline ?? raw.title ?? raw.working_title ?? raw.suggested_headline ?? "")
+    || findLongestString(raw).slice(0, 200);
 
   const outline: ContentOutline = {
     channelId: config.id,
