@@ -85,18 +85,19 @@ Respond with JSON matching this structure:
     userPrompt += `\n\n${publicationHistoryPrompt}\n\nDEPRIORITIZE overlapping topics — find fresh angles or skip topics already covered.`;
   }
 
-  const { data, cost } = await callLlmJson<Omit<ResearchBrief, "channelId" | "sources">>(
+  const { data: raw, cost } = await callLlmJson<Record<string, unknown>>(
     "sonnet",
     systemPrompt,
     userPrompt
   );
 
+  // Normalize alternative field names the LLM may use
   const brief: ResearchBrief = {
     channelId: config.id,
-    summary: data.summary ?? "",
-    keyFacts: data.keyFacts ?? [],
-    narrativeAngles: data.narrativeAngles ?? [],
-    dataPoints: data.dataPoints ?? {},
+    summary: (raw.summary ?? raw.executive_summary ?? "") as string,
+    keyFacts: (raw.keyFacts ?? raw.key_facts ?? raw.findings ?? []) as ResearchBrief["keyFacts"],
+    narrativeAngles: (raw.narrativeAngles ?? raw.narrative_angles ?? []) as string[],
+    dataPoints: (raw.dataPoints ?? raw.data_points ?? {}) as Record<string, unknown>,
     sources,
   };
 

@@ -52,7 +52,7 @@ ${articleHistory ? `\n${articleHistory}\n` : ""}Respond with JSON:
 
   const userPrompt = `Research Brief:\n\n${JSON.stringify(brief, null, 2)}\n\nCreate an outline as JSON.`;
 
-  const { data, cost } = await callLlmJson<Omit<ContentOutline, "channelId">>(
+  const { data: raw, cost } = await callLlmJson<Record<string, unknown>>(
     "sonnet",
     systemPrompt,
     userPrompt
@@ -60,11 +60,11 @@ ${articleHistory ? `\n${articleHistory}\n` : ""}Respond with JSON:
 
   const outline: ContentOutline = {
     channelId: config.id,
-    headline: data.headline ?? "",
-    hook: data.hook ?? "",
-    sections: data.sections ?? [],
-    conclusion: data.conclusion ?? "",
-    estimatedWordCount: data.estimatedWordCount ?? config.targetWordCount,
+    headline: (raw.headline ?? raw.title ?? "") as string,
+    hook: (raw.hook ?? raw.opening_hook ?? raw.intro ?? "") as string,
+    sections: (raw.sections ?? []) as ContentOutline["sections"],
+    conclusion: (raw.conclusion ?? raw.closing ?? "") as string,
+    estimatedWordCount: (raw.estimatedWordCount ?? raw.estimated_word_count ?? config.targetWordCount) as number,
   };
 
   logger.info(
