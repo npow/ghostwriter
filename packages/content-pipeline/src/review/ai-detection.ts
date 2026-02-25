@@ -136,7 +136,12 @@ Respond with JSON:
     draft.content
   );
 
-  const discoveredPatterns: DiscoveredPattern[] = (data.discoveredPatterns ?? []).filter(
+  const llmFeedback = Array.isArray(data.feedback) ? data.feedback : [];
+  const llmSuggestions = Array.isArray(data.suggestions) ? data.suggestions : [];
+  const llmScores = (data.scores && typeof data.scores === "object") ? data.scores : {};
+  const llmPassed = typeof data.passed === "boolean" ? data.passed : false;
+
+  const discoveredPatterns: DiscoveredPattern[] = (Array.isArray(data.discoveredPatterns) ? data.discoveredPatterns : []).filter(
     (p) => p.phrase && p.category && typeof p.confidence === "number"
   );
 
@@ -147,12 +152,12 @@ Respond with JSON:
   // Merge all feedback
   const allFeedback = [
     ...heuristicFeedback,
-    ...data.feedback,
+    ...llmFeedback,
     ...externalCheck.feedback,
   ];
 
   const allPassed =
-    data.passed &&
+    llmPassed &&
     aiPhrases.length === 0 &&
     learnedHits.length === 0 &&
     structuralIssues.length === 0 &&
@@ -160,10 +165,10 @@ Respond with JSON:
 
   const result: ReviewAgentResult = {
     agent: "ai_detection",
-    scores: data.scores,
+    scores: llmScores,
     passed: allPassed,
     feedback: allFeedback,
-    suggestions: data.suggestions,
+    suggestions: llmSuggestions,
   };
 
   return { result, discoveredPatterns, cost };
