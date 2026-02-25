@@ -27,3 +27,20 @@ jobs:
       - run: pnpm turbo build
 
       - run: pnpm turbo test
+
+  deploy:
+    name: Deploy to Hetzner
+    needs: build-and-test
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.HETZNER_HOST }}
+          username: ${{ secrets.HETZNER_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            cd /root/ghostwriter
+            git pull origin main
+            docker compose -f deploy/docker-compose.prod.yml build
+            docker image prune -f
