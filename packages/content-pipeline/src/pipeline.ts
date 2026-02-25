@@ -72,13 +72,19 @@ export async function runPipeline(
   callbacks?.onStageComplete?.("research", researchCost);
 
   // Stage 2: Differentiation (find content gaps and contrarian angles)
+  // Non-critical — if it fails, continue without differentiation
   let differentiation: DifferentiationBrief | undefined;
   if (!skipDifferentiation) {
     callbacks?.onStageStart?.("differentiate");
-    const diffResult = await runDifferentiationStage(config, brief, publicationHistoryPrompt);
-    differentiation = diffResult.differentiation;
-    totalCost += diffResult.cost;
-    callbacks?.onStageComplete?.("differentiate", diffResult.cost);
+    try {
+      const diffResult = await runDifferentiationStage(config, brief, publicationHistoryPrompt);
+      differentiation = diffResult.differentiation;
+      totalCost += diffResult.cost;
+      callbacks?.onStageComplete?.("differentiate", diffResult.cost);
+    } catch (err) {
+      logger.warn({ channelId: config.id, err }, "Differentiation stage failed, continuing without it");
+      callbacks?.onStageComplete?.("differentiate", 0);
+    }
   }
 
   // Stage 3: Outline
