@@ -6,3 +6,4 @@ export {
   getWordPressPostStats,
   type WordPressConfig,
 } from "./wordpress.js";
+export { publishToHugo, type HugoConfig } from "./hugo.js";

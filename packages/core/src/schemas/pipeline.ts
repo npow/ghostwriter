@@ -92,6 +92,19 @@ export const ContentDraftSchema = z.object({
 
 export type ContentDraft = z.infer<typeof ContentDraftSchema>;
 
+// ─── Publication History ────────────────────────────────────────────────────
+
+export interface PublishedItem {
+  headline: string;
+  summary: string;
+  publishedAt: string;
+}
+
+export interface PublicationHistory {
+  channelId: string;
+  items: PublishedItem[];
+}
+
 // ─── Review Scores ──────────────────────────────────────────────────────────
 
 export const ReviewScoresSchema = z.object({
@@ -104,12 +117,14 @@ export const ReviewScoresSchema = z.object({
   engagementPotential: z.number().min(1).max(10),
   naturalness: z.number().min(1).max(10),
   perplexityVariance: z.number().min(1).max(10),
+  topicOriginality: z.number().min(1).max(10),
+  angleFreshness: z.number().min(1).max(10),
 });
 
 export type ReviewScores = z.infer<typeof ReviewScoresSchema>;
 
 export const ReviewAgentResultSchema = z.object({
-  agent: z.enum(["editor", "fact_checker", "engagement", "ai_detection"]),
+  agent: z.enum(["editor", "fact_checker", "engagement", "ai_detection", "originality"]),
   scores: z.record(z.number()),
   passed: z.boolean(),
   feedback: z.array(z.string()),

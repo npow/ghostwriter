@@ -5,12 +5,14 @@ import type {
   ReviewResult,
   ReviewScores,
   ReviewAgentResult,
+  PublicationHistory,
 } from "@ghostwriter/core";
 import { createChildLogger, mergeDiscoveredPatterns } from "@ghostwriter/core";
 import { runEditorReview } from "./editor.js";
 import { runFactCheckerReview } from "./fact-checker.js";
 import { runEngagementReview } from "./engagement.js";
 import { runAiDetectionReview } from "./ai-detection.js";
+import { runOriginalityReview } from "./originality.js";
 
 const logger = createChildLogger({ module: "pipeline:review" });
 
@@ -18,6 +20,7 @@ export { runEditorReview } from "./editor.js";
 export { runFactCheckerReview } from "./fact-checker.js";
 export { runEngagementReview } from "./engagement.js";
 export { runAiDetectionReview } from "./ai-detection.js";
+export { runOriginalityReview } from "./originality.js";
 export {
   checkExternalAiDetection,
   passesExternalDetection,
@@ -25,28 +28,30 @@ export {
 } from "./external-ai-detection.js";
 
 /**
- * Run all 4 review agents in parallel and aggregate results.
+ * Run all 5 review agents in parallel and aggregate results.
  */
 export async function runReviewStage(
   config: ChannelConfig,
   draft: ContentDraft,
-  brief: ResearchBrief
+  brief: ResearchBrief,
+  publicationHistory?: PublicationHistory
 ): Promise<{ review: ReviewResult; cost: number }> {
   logger.info(
     { channelId: config.id, revision: draft.revision },
-    "Starting review stage (4 agents in parallel)"
+    "Starting review stage (5 agents in parallel)"
   );
 
-  const [editor, factChecker, engagement, aiDetection] =
+  const [editor, factChecker, engagement, aiDetection, originality] =
     await Promise.all([
       runEditorReview(config, draft),
       runFactCheckerReview(config, draft, brief),
       runEngagementReview(config, draft),
       runAiDetectionReview(config, draft),
+      runOriginalityReview(config, draft, publicationHistory),
     ]);
 
   const totalCost =
-    editor.cost + factChecker.cost + engagement.cost + aiDetection.cost;
+    editor.cost + factChecker.cost + engagement.cost + aiDetection.cost + originality.cost;
 
   // Persist any newly discovered AI patterns (non-blocking)
   if (aiDetection.discoveredPatterns.length > 0) {
@@ -69,10 +74,15 @@ export async function runReviewStage(
     factChecker.result,
     engagement.result,
     aiDetection.result,
+    originality.result,
   ];
 
   const aggregateScores = aggregateAllScores(agentResults, config);
-  const allPassed = agentResults.every((r) => r.passed);
+  // Determine pass/fail from scores vs configured thresholds, not agent self-reports
+  const minScores = config.qualityGate.minScores;
+  const allPassed = (Object.entries(aggregateScores) as [string, number][]).every(
+    ([key, value]) => value >= (minScores[key as keyof typeof minScores] ?? 1)
+  );
 
   const review: ReviewResult = {
     channelId: config.id,
@@ -129,5 +139,7 @@ function aggregateAllScores(
     engagementPotential: resolve("engagementPotential", 5),
     naturalness: resolve("naturalness", 5),
     perplexityVariance: resolve("perplexityVariance", 5),
+    topicOriginality: resolve("topicOriginality", 9),
+    angleFreshness: resolve("angleFreshness", 9),
   };
 }

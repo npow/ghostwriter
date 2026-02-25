@@ -18,3 +18,8 @@ export {
   type TopPerformer,
   type ContentPattern,
 } from "./performance-insights.js";
+
+export {
+  getPublicationHistory,
+  formatHistoryForPrompt,
+} from "./publication-history.js";

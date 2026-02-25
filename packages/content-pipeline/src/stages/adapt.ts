@@ -55,8 +55,8 @@ async function adaptForPlatform(
 ): Promise<{ adaptation: PlatformContent; cost: number }> {
   const platform = target.platform;
 
-  // WordPress: use the draft content as-is (it's already in markdown)
-  if (platform === "wordpress") {
+  // WordPress/Hugo: use the draft content as-is (it's already in markdown)
+  if (platform === "wordpress" || platform === "hugo") {
     return {
       adaptation: {
         channelId: config.id,
@@ -67,6 +67,7 @@ async function adaptForPlatform(
         metadata: {
           headline: draft.headline,
           tags: "tags" in target ? target.tags : [],
+          ...("draft" in target ? { draft: target.draft } : {}),
         },
       },
       cost: 0,

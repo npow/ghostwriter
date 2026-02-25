@@ -33,21 +33,51 @@ export async function fetchRssData(
 
   const items = (feed.items ?? []).slice(0, config.maxItems);
 
-  return items.map((item, idx) => ({
-    id: `${channelId}-rss-${Date.now()}-${idx}`,
-    sourceType: "rss" as const,
-    provider: extractDomain(config.url),
-    title: item.title ?? undefined,
-    content: item.contentSnippet ?? item.content ?? item.summary ?? "",
-    url: item.link ?? undefined,
-    publishedAt: item.pubDate ?? item.isoDate ?? undefined,
-    metadata: {
-      creator: item.creator,
-      categories: item.categories,
-      guid: item.guid,
-    },
-    fetchedAt: new Date().toISOString(),
-  }));
+  return items.map((item, idx) => {
+    const content = item.contentSnippet ?? item.content ?? item.summary ?? "";
+    const engagementScore = extractEngagementSignal(content, domain);
+    return {
+      id: `${channelId}-rss-${Date.now()}-${idx}`,
+      sourceType: "rss" as const,
+      provider: extractDomain(config.url),
+      title: item.title ?? undefined,
+      content,
+      url: item.link ?? undefined,
+      publishedAt: item.pubDate ?? item.isoDate ?? undefined,
+      metadata: {
+        creator: item.creator,
+        categories: item.categories,
+        guid: item.guid,
+        ...(engagementScore != null ? { engagementScore } : {}),
+      },
+      fetchedAt: new Date().toISOString(),
+    };
+  });
+}
+
+/**
+ * Extract engagement signal from RSS content.
+ * Recognizes HN points ("N points") and Reddit scores from known domains.
+ */
+function extractEngagementSignal(
+  content: string,
+  domain: string
+): number | null {
+  // Hacker News: "Points: 123" or "123 points"
+  if (domain.includes("hnrss") || domain.includes("news.ycombinator")) {
+    const match =
+      content.match(/Points:\s*(\d+)/i) ??
+      content.match(/(\d+)\s+points/i);
+    if (match) return parseInt(match[1], 10);
+  }
+
+  // Reddit: score often appears in content or title as "[score hidden]" or as a number
+  if (domain.includes("reddit.com")) {
+    const match = content.match(/(?:score|points|upvotes)[\s:]*(\d+)/i);
+    if (match) return parseInt(match[1], 10);
+  }
+
+  return null;
 }
 
 function extractDomain(url: string): string {

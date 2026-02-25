@@ -5,6 +5,7 @@ import type {
   PlatformContent,
   ReviewResult,
   StyleFingerprint,
+  PublicationHistory,
 } from "@ghostwriter/core";
 import { createChildLogger } from "@ghostwriter/core";
 import {
@@ -55,15 +56,17 @@ export async function runPipeline(
     skipSeo?: boolean;
     skipDifferentiation?: boolean;
     performanceContext?: string;
+    publicationHistoryPrompt?: string;
+    publicationHistory?: PublicationHistory;
   }
 ): Promise<PipelineResult> {
-  const { fingerprint, callbacks, skipAdapt, skipSeo, skipDifferentiation, performanceContext } =
+  const { fingerprint, callbacks, skipAdapt, skipSeo, skipDifferentiation, performanceContext, publicationHistoryPrompt, publicationHistory } =
     options ?? {};
   let totalCost = 0;
 
   // Stage 1: Research
   callbacks?.onStageStart?.("research");
-  const { brief, cost: researchCost } = await runResearchStage(config, sources);
+  const { brief, cost: researchCost } = await runResearchStage(config, sources, publicationHistoryPrompt);
   totalCost += researchCost;
   callbacks?.onStageComplete?.("research", researchCost);
 
@@ -71,7 +74,7 @@ export async function runPipeline(
   let differentiation: DifferentiationBrief | undefined;
   if (!skipDifferentiation) {
     callbacks?.onStageStart?.("differentiate");
-    const diffResult = await runDifferentiationStage(config, brief);
+    const diffResult = await runDifferentiationStage(config, brief, publicationHistoryPrompt);
     differentiation = diffResult.differentiation;
     totalCost += diffResult.cost;
     callbacks?.onStageComplete?.("differentiate", diffResult.cost);
@@ -108,7 +111,7 @@ export async function runPipeline(
 
   for (let i = 0; i <= maxRevisions; i++) {
     callbacks?.onStageStart?.("review");
-    const reviewResult = await runReviewStage(config, draft, brief);
+    const reviewResult = await runReviewStage(config, draft, brief, publicationHistory);
     review = reviewResult.review;
     totalCost += reviewResult.cost;
     callbacks?.onStageComplete?.("review", reviewResult.cost);

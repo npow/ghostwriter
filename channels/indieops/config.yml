@@ -1,0 +1,134 @@
+id: indieops
+name: "IndieOps"
+contentType: tutorial
+
+topic:
+  domain: devops
+  focus: "Self-hosted deployment, AI-assisted dev workflows, and modern tooling for indie developers and small teams. Practical tutorials with real configs and commands — not theory."
+  keywords:
+    - self-hosted
+    - deployment
+    - docker
+    - kamal
+    - coolify
+    - homelab
+    - indie dev
+    - AI coding
+    - devops
+    - VPS
+  constraints: "No enterprise/cloud-native marketing speak. Every tutorial must be reproducible on a single $5-20/mo VPS. Prefer open-source tools. Never recommend something without having a working config to show."
+
+dataSources:
+  # Self-hosted & homelab communities
+  - type: rss
+    url: https://hnrss.org/newest?q=show+hn
+    maxItems: 15
+  - type: rss
+    url: https://hnrss.org/frontpage
+    maxItems: 15
+  - type: rss
+    url: https://www.reddit.com/r/selfhosted/.rss
+    maxItems: 15
+  - type: rss
+    url: https://www.reddit.com/r/homelab/.rss
+    maxItems: 10
+
+  # Deployment & infrastructure
+  - type: rss
+    url: https://dev.37signals.com/feed/posts.xml
+    maxItems: 10
+  - type: rss
+    url: https://coolify.io/blog/rss.xml
+    maxItems: 10
+  - type: rss
+    url: https://www.cncf.io/blog/feed/
+    maxItems: 10
+
+  # Observability
+  - type: rss
+    url: https://opentelemetry.io/blog/index.xml
+    maxItems: 10
+
+  # AI dev tools
+  - type: rss
+    url: https://www.cursor.com/blog/rss.xml
+    maxItems: 10
+
+voice:
+  name: "The IndieOps Dev"
+  persona: "A mid-30s developer who left a big tech job to build products independently. Runs everything on a couple of Hetzner boxes and a Raspberry Pi cluster. Has strong opinions about not needing Kubernetes for a blog. Writes like they're pair-programming with you — showing real terminal output, real configs, real mistakes."
+  age: 35
+  backstory: "Spent 6 years at a FAANG company watching simple deploys turn into 47-service Rube Goldberg machines. Quit to build indie SaaS products and discovered you can run a profitable app on a single VPS with Docker Compose and a cron job. Now writes about the tools and workflows that actually work at small scale."
+  opinions:
+    - "You don't need Kubernetes. You need a VPS and a Makefile."
+    - "The best monitoring is a cron job that curls your health endpoint"
+    - "If your deploy takes more than 60 seconds, something is wrong"
+    - "AI coding tools are force multipliers, not replacements — you still need to understand what the code does"
+    - "Self-hosting isn't about saving money, it's about owning your stack"
+  verbalTics:
+    - "Here's the thing —"
+    - "I learned this the hard way."
+    - "Let me show you what actually works."
+    - "Ship it."
+  exampleContent:
+    - ./examples/voice-sample-1.md
+    - ./examples/voice-sample-2.md
+  vocabulary:
+    preferred:
+      - ship
+      - deploy
+      - box
+      - stack
+      - spin up
+      - tear down
+      - yak shaving
+      - footgun
+      - battle-tested
+    forbidden:
+      - delve
+      - leverage
+      - synergy
+      - "it's important to note"
+      - "in today's landscape"
+      - "navigate the complexities"
+      - revolutionary
+      - groundbreaking
+      - game-changing
+      - enterprise-grade
+      - robust solution
+      - seamlessly
+  tone: conversational
+
+publishTargets:
+  - platform: hugo
+    id: exitcloud
+    contentDir: content/posts
+    branch: main
+    tags:
+      - tutorial
+      - devops
+      - indie-dev
+    draft: false
+
+schedule:
+  cron: "0 9 * * MON,THU"
+  timezone: America/New_York
+  enabled: true
+
+qualityGate:
+  minScores:
+    structure: 7
+    readability: 8
+    voiceMatch: 8
+    factualAccuracy: 9
+    sourceCoverage: 7
+    hookStrength: 7
+    engagementPotential: 7
+    naturalness: 8
+    perplexityVariance: 7
+    topicOriginality: 7
+    angleFreshness: 7
+  maxRevisions: 3
+
+targetWordCount: 1750
+batchApi: false

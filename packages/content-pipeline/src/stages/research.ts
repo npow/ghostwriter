@@ -9,12 +9,26 @@ import { callLlmJson } from "../llm.js";
 const logger = createChildLogger({ module: "pipeline:research" });
 
 /**
+ * Sort sources by engagement score (highest first), unscored items last.
+ */
+function rankSources(sources: SourceMaterial[]): SourceMaterial[] {
+  return [...sources].sort((a, b) => {
+    const scoreA =
+      (a.metadata?.engagementScore as number | undefined) ?? -1;
+    const scoreB =
+      (b.metadata?.engagementScore as number | undefined) ?? -1;
+    return scoreB - scoreA;
+  });
+}
+
+/**
  * Research Stage: Analyze ingested data and produce a structured research brief.
  * Uses Sonnet for cost efficiency.
  */
 export async function runResearchStage(
   config: ChannelConfig,
-  sources: SourceMaterial[]
+  sources: SourceMaterial[],
+  publicationHistoryPrompt?: string
 ): Promise<{ brief: ResearchBrief; cost: number }> {
   logger.info(
     { channelId: config.id, sourceCount: sources.length },
@@ -38,6 +52,7 @@ CRITICAL RULES:
 - ONLY include facts that appear in the source data. Do NOT invent or hallucinate any information.
 - Every fact must be traceable to a specific source.
 - If data is sparse, note gaps honestly — do not fill them with made-up information.
+- PRIORITIZE topics with higher engagement scores — these are trending and resonate with audiences.
 
 Respond with JSON matching this structure:
 {
@@ -47,14 +62,20 @@ Respond with JSON matching this structure:
   "dataPoints": { "key": "value pairs of structured data" }
 }`;
 
-  const sourceData = sources
-    .map(
-      (s, i) =>
-        `--- Source ${i + 1} [${s.provider}] ${s.title ?? ""} ---\n${s.content}`
-    )
+  const ranked = rankSources(sources);
+  const sourceData = ranked
+    .map((s, i) => {
+      const engagement = (s.metadata?.engagementScore as number | undefined);
+      const tag = engagement != null ? ` [engagement: ${engagement}]` : "";
+      return `--- Source ${i + 1} [${s.provider}]${tag} ${s.title ?? ""} ---\n${s.content}`;
+    })
     .join("\n\n");
 
-  const userPrompt = `Here is the source data to analyze:\n\n${sourceData}\n\nProduce a research brief as JSON.`;
+  let userPrompt = `Here is the source data to analyze:\n\n${sourceData}\n\nProduce a research brief as JSON.`;
+
+  if (publicationHistoryPrompt) {
+    userPrompt += `\n\n${publicationHistoryPrompt}\n\nDEPRIORITIZE overlapping topics — find fresh angles or skip topics already covered.`;
+  }
 
   const { data, cost } = await callLlmJson<Omit<ResearchBrief, "channelId" | "sources">>(
     "sonnet",

@@ -27,7 +27,8 @@ export interface DifferentiationBrief {
  */
 export async function runDifferentiationStage(
   config: ChannelConfig,
-  brief: ResearchBrief
+  brief: ResearchBrief,
+  publicationHistoryPrompt?: string
 ): Promise<{ differentiation: DifferentiationBrief; cost: number }> {
   logger.info({ channelId: config.id }, "Starting differentiation stage");
 
@@ -81,10 +82,15 @@ ${JSON.stringify(brief.dataPoints, null, 2)}
 Narrative Angles Already Identified:
 ${brief.narrativeAngles.join("\n")}`;
 
+  let userPrompt = briefSummary;
+  if (publicationHistoryPrompt) {
+    userPrompt += `\n\n${publicationHistoryPrompt}\n\nAdd any overlapping topics from the publication history to the avoidTopics list.`;
+  }
+
   const { data: raw, cost } = await callLlmJson<Partial<DifferentiationBrief>>(
     "sonnet",
     systemPrompt,
-    briefSummary
+    userPrompt
   );
 
   // Ensure all fields are present even if the LLM omitted some

@@ -13,6 +13,7 @@ import {
 import { publishToTwitter } from "./adapters/twitter.js";
 import { publishToPodcast } from "./adapters/podcast.js";
 import { publishToWordPress } from "./adapters/wordpress.js";
+import { publishToHugo } from "./adapters/hugo.js";
 import {
   generateIdempotencyKey,
   isAlreadyPublished,
@@ -258,6 +259,25 @@ async function publishOne(
         username: wpUser,
         password: wpPass,
       });
+    }
+
+    case "hugo": {
+      const conn = target.id
+        ? await getConnection(target.id, "hugo")
+        : undefined;
+      const repoPath =
+        target.repoPath ?? conn?.credentials?.repoPath;
+      if (!repoPath) {
+        throw new Error(
+          "Hugo repoPath missing — run: auto_blogger connect hugo"
+        );
+      }
+      const contentDir =
+        target.contentDir ?? conn?.credentials?.contentDir ?? "content/posts";
+      const branch =
+        target.branch ?? conn?.credentials?.branch ?? "main";
+      const draft = target.draft ?? false;
+      return publishToHugo(content, { repoPath, contentDir, branch, draft });
     }
 
     default:

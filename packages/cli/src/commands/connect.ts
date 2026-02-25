@@ -19,7 +19,7 @@ import {
   type WpComSite,
 } from "@ghostwriter/site-setup";
 
-type Platform = "wordpress" | "wordpress-com" | "twitter";
+type Platform = "wordpress" | "wordpress-com" | "twitter" | "hugo";
 
 export async function connectCommand(platform?: string) {
   if (!platform) {
@@ -29,6 +29,7 @@ export async function connectCommand(platform?: string) {
         { value: "wordpress-com", name: "WordPress.com (OAuth)" },
         { value: "wordpress", name: "WordPress (self-hosted)" },
         { value: "twitter", name: "Twitter / X" },
+        { value: "hugo", name: "Hugo (Git Blog)" },
         { value: "list", name: "List existing connections" },
       ],
     });
@@ -44,12 +45,15 @@ export async function connectCommand(platform?: string) {
     case "twitter":
       await connectTwitter();
       break;
+    case "hugo":
+      await connectHugo();
+      break;
     case "list":
       await listConnections();
       break;
     default:
       console.log(chalk.red(`\n  Unknown platform: ${platform}`));
-      console.log(`  Supported: wordpress, wordpress-com, twitter\n`);
+      console.log(`  Supported: wordpress, wordpress-com, twitter, hugo\n`);
       process.exitCode = 1;
   }
 }
@@ -543,6 +547,158 @@ async function connectTwitter() {
       `  Saved as "${connectionId}" in ~/.ghostwriter/connections.json\n`
     )
   );
+}
+
+// ─── Hugo ───────────────────────────────────────────────────────────────────
+
+async function connectHugo() {
+  const { execFile } = await import("node:child_process");
+  const { promisify } = await import("node:util");
+  const { access } = await import("node:fs/promises");
+  const execFileAsync = promisify(execFile);
+
+  console.log(chalk.blue("\n  Connect Hugo (Git Blog)\n"));
+  console.log(
+    chalk.dim(
+      "  Publishes markdown posts to a local Hugo git repo.\n" +
+        "  Commits and pushes via SSH — your CI/CD handles the deploy.\n"
+    )
+  );
+
+  // Step 1: Connection name
+  const existingHugo = (await loadConnections()).filter(
+    (c) => c.platform === "hugo"
+  );
+  const defaultName =
+    existingHugo.length === 0
+      ? "hugo"
+      : `hugo-${existingHugo.length + 1}`;
+
+  const connectionId = await input({
+    message: "Connection name:",
+    default: defaultName,
+    validate: (val) =>
+      /^[a-z0-9-]+$/.test(val) ||
+      "Use lowercase letters, numbers, and hyphens only",
+  });
+
+  // Step 2: Local repo path
+  const repoPath = await input({
+    message: "Path to local Hugo git repo:",
+    validate: async (val) => {
+      const resolved = resolve(val.replace(/^~/, process.env.HOME ?? ""));
+      try {
+        await execFileAsync("git", ["-C", resolved, "rev-parse", "--git-dir"], {
+          timeout: 5_000,
+        });
+        return true;
+      } catch {
+        return "Not a git repository. Check the path and try again.";
+      }
+    },
+  });
+
+  const resolvedRepo = resolve(repoPath.replace(/^~/, process.env.HOME ?? ""));
+
+  // Step 3: Detect default branch
+  let defaultBranch = "main";
+  try {
+    const { stdout } = await execFileAsync(
+      "git",
+      ["-C", resolvedRepo, "symbolic-ref", "refs/remotes/origin/HEAD"],
+      { timeout: 5_000 }
+    );
+    const match = stdout.trim().match(/refs\/remotes\/origin\/(.+)/);
+    if (match) defaultBranch = match[1];
+  } catch {
+    // Fall back to "main"
+  }
+
+  const branch = await input({
+    message: "Git branch to publish to:",
+    default: defaultBranch,
+  });
+
+  // Step 4: Verify SSH push access
+  console.log(chalk.dim("\n  Verifying remote access..."));
+  try {
+    await execFileAsync("git", ["-C", resolvedRepo, "ls-remote", "--exit-code", "origin"], {
+      timeout: 15_000,
+    });
+    console.log(chalk.green("  Remote access OK"));
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.log(chalk.yellow(`  Warning: could not reach remote — ${message}`));
+    console.log(chalk.dim("  Push may fail. Check your SSH keys or remote URL.\n"));
+    const proceed = await confirm({
+      message: "Continue anyway?",
+      default: true,
+    });
+    if (!proceed) return;
+  }
+
+  // Step 5: Detect Hugo config and infer content dir
+  let contentDir = "content/posts";
+  try {
+    // Check for hugo.toml, config.toml, or config.yaml
+    const configFiles = ["hugo.toml", "config.toml", "config.yaml", "hugo.yaml"];
+    let foundConfig = false;
+    for (const cf of configFiles) {
+      try {
+        await access(resolve(resolvedRepo, cf));
+        foundConfig = true;
+        console.log(chalk.green(`  Found Hugo config: ${cf}`));
+        break;
+      } catch {
+        // not found, try next
+      }
+    }
+    if (!foundConfig) {
+      console.log(
+        chalk.yellow("  No Hugo config found (hugo.toml/config.toml)")
+      );
+      console.log(chalk.dim("  Make sure this is a Hugo site.\n"));
+    }
+  } catch {
+    // ignore
+  }
+
+  contentDir = await input({
+    message: "Content directory (relative to repo root):",
+    default: contentDir,
+  });
+
+  // Step 6: Save connection
+  await saveConnection({
+    id: connectionId,
+    platform: "hugo",
+    url: resolvedRepo,
+    credentials: {
+      repoPath: resolvedRepo,
+      branch,
+      contentDir,
+    },
+    createdAt: new Date().toISOString(),
+  });
+
+  console.log(chalk.green("\n  Hugo connected successfully!"));
+  console.log(
+    chalk.dim(
+      `  Saved as "${connectionId}" in ~/.ghostwriter/connections.json\n`
+    )
+  );
+
+  // Show config example
+  console.log("  Add this to your channel config:\n");
+  console.log(
+    chalk.cyan(
+      "  publishTargets:\n" +
+        `    - platform: hugo\n` +
+        `      id: ${connectionId}\n` +
+        `      repoPath: ${resolvedRepo}\n`
+    )
+  );
+  console.log();
 }
 
 // ─── Helpers ───────────────────────────────────────────────────────────────

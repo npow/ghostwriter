@@ -94,11 +94,22 @@ export const WordPressTargetSchema = z.object({
   password: z.string().optional(),
 });
 
+export const HugoTargetSchema = z.object({
+  platform: z.literal("hugo"),
+  id: z.string().optional(),
+  repoPath: z.string(), // Absolute path to local git repo
+  contentDir: z.string().default("content/posts"), // Where to write posts
+  branch: z.string().default("main"), // Git branch to push to
+  tags: z.array(z.string()).default([]),
+  draft: z.boolean().default(false), // Hugo draft status
+});
+
 export const PublishTargetSchema = z.discriminatedUnion("platform", [
   TwitterTargetSchema,
   PodcastTargetSchema,
   EtsyTargetSchema,
   WordPressTargetSchema,
+  HugoTargetSchema,
 ]);
 
 // ─── Quality Gate ───────────────────────────────────────────────────────────
@@ -115,6 +126,8 @@ export const QualityGateSchema = z.object({
       engagementPotential: z.number().min(1).max(10).default(7),
       naturalness: z.number().min(1).max(10).default(7),
       perplexityVariance: z.number().min(1).max(10).default(7),
+      topicOriginality: z.number().min(1).max(10).default(6),
+      angleFreshness: z.number().min(1).max(10).default(6),
     })
     .default({}),
   maxRevisions: z.number().positive().default(3),
