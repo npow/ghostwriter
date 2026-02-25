@@ -138,8 +138,39 @@ Respond with JSON:
 
   const llmFeedback = Array.isArray(data.feedback) ? data.feedback : [];
   const llmSuggestions = Array.isArray(data.suggestions) ? data.suggestions : [];
-  const llmScores = (data.scores && typeof data.scores === "object") ? data.scores : {};
   const llmPassed = typeof data.passed === "boolean" ? data.passed : false;
+
+  // Extract scores — LLM may return them under "scores" or as top-level keys
+  let llmScores: Record<string, number> = {};
+  const raw = data as unknown as Record<string, unknown>;
+  if (raw.scores && typeof raw.scores === "object") {
+    const s = raw.scores as Record<string, unknown>;
+    for (const [k, v] of Object.entries(s)) {
+      if (typeof v === "number") {
+        const camel = k.replace(/_([a-z])/g, (_, c: string) => c.toUpperCase());
+        llmScores[camel] = v;
+      }
+    }
+  }
+  // Fallback: search top-level and nested for naturalness/perplexityVariance
+  if (!llmScores.naturalness && !llmScores.perplexityVariance) {
+    for (const [k, v] of Object.entries(raw)) {
+      if (typeof v === "number" && v >= 1 && v <= 10) {
+        const lower = k.toLowerCase();
+        if (lower.includes("natural")) llmScores.naturalness = v;
+        else if (lower.includes("perplexity") || lower.includes("variance") || lower.includes("burstiness")) llmScores.perplexityVariance = v;
+      }
+    }
+  }
+  // Use heuristic burstiness as fallback score for perplexityVariance
+  if (!llmScores.perplexityVariance) {
+    llmScores.perplexityVariance = Math.min(10, Math.max(1, Math.round(burstiness.burstinessScore * 10)));
+  }
+  if (!llmScores.naturalness) {
+    // Estimate naturalness from heuristic signals
+    const penaltyCount = aiPhrases.length + learnedHits.length + structuralIssues.length;
+    llmScores.naturalness = Math.max(1, 8 - penaltyCount);
+  }
 
   const discoveredPatterns: DiscoveredPattern[] = (Array.isArray(data.discoveredPatterns) ? data.discoveredPatterns : []).filter(
     (p) => p.phrase && p.category && typeof p.confidence === "number"

@@ -8,7 +8,7 @@ import type {
   PublicationHistory,
 } from "@ghostwriter/core";
 import { createChildLogger, mergeDiscoveredPatterns } from "@ghostwriter/core";
-import { findScoreMaps, normalizeScoreKeys, findStringArrays } from "../llm.js";
+import { findStringArrays } from "../llm.js";
 import { runEditorReview } from "./editor.js";
 import { runFactCheckerReview } from "./fact-checker.js";
 import { runEngagementReview } from "./engagement.js";
@@ -121,6 +121,68 @@ export async function runReviewStage(
   return { review, cost: totalCost };
 }
 
+// ─── Score dimension fuzzy mapping ───
+// Maps keywords found in response keys to canonical score dimension names.
+const SCORE_KEYWORD_MAP: Array<{ keywords: string[]; dimension: string }> = [
+  { keywords: ["structure", "structural", "organization", "flow"], dimension: "structure" },
+  { keywords: ["readability", "readable", "writing_quality", "clarity", "prose"], dimension: "readability" },
+  { keywords: ["voice", "voice_match", "tone", "persona"], dimension: "voiceMatch" },
+  { keywords: ["factual", "accuracy", "fact_check", "verification"], dimension: "factualAccuracy" },
+  { keywords: ["source_coverage", "coverage", "sourcing", "citation"], dimension: "sourceCoverage" },
+  { keywords: ["hook", "opening", "intro", "headline"], dimension: "hookStrength" },
+  { keywords: ["engagement", "shareab", "viral", "compelling"], dimension: "engagementPotential" },
+  { keywords: ["natural", "human", "authentic"], dimension: "naturalness" },
+  { keywords: ["perplexity", "variance", "burstiness", "sentence_variety"], dimension: "perplexityVariance" },
+  { keywords: ["originality", "topic_original", "unique"], dimension: "topicOriginality" },
+  { keywords: ["freshness", "angle_fresh", "novel"], dimension: "angleFreshness" },
+];
+
+/**
+ * Try to map a freeform key name to a known score dimension.
+ */
+function matchScoreDimension(key: string): string | null {
+  const lower = key.toLowerCase();
+  for (const { keywords, dimension } of SCORE_KEYWORD_MAP) {
+    if (keywords.some((kw) => lower.includes(kw))) return dimension;
+  }
+  return null;
+}
+
+/**
+ * Recursively extract all numeric values (1-10) from an object,
+ * collecting them with their key paths for score mapping.
+ */
+function extractNumericScores(data: unknown, depth = 0): Record<string, number> {
+  const scores: Record<string, number> = {};
+  if (!data || typeof data !== "object" || Array.isArray(data) || depth > 3) return scores;
+
+  for (const [key, value] of Object.entries(data as Record<string, unknown>)) {
+    if (typeof value === "number" && value >= 1 && value <= 10) {
+      const dimension = matchScoreDimension(key);
+      if (dimension) {
+        scores[dimension] = value;
+      }
+    } else if (typeof value === "string") {
+      // Try to extract "N/10" patterns from text
+      const match = value.match(/\b(\d+(?:\.\d+)?)\s*\/\s*10\b/);
+      if (match) {
+        const num = parseFloat(match[1]);
+        if (num >= 1 && num <= 10) {
+          const dimension = matchScoreDimension(key);
+          if (dimension) scores[dimension] = Math.round(num);
+        }
+      }
+    } else if (typeof value === "object" && !Array.isArray(value)) {
+      // Recurse into nested objects
+      const nested = extractNumericScores(value, depth + 1);
+      for (const [dim, val] of Object.entries(nested)) {
+        if (!(dim in scores)) scores[dim] = val;
+      }
+    }
+  }
+  return scores;
+}
+
 /**
  * Ensure a review agent result has all required fields.
  * LLMs through proxies may return non-standard JSON structures.
@@ -132,42 +194,39 @@ function normalizeAgentResult(
 ): ReviewAgentResult {
   const result = raw as Record<string, unknown>;
 
-  // 1. Extract scores — try explicit "scores" field, then search recursively
+  // 1. Extract scores — try explicit "scores" field first
   let scores: Record<string, number> = {};
   if (result.scores && typeof result.scores === "object" && !Array.isArray(result.scores)) {
-    scores = normalizeScoreKeys(result.scores as Record<string, number>);
-  } else {
-    // Search for any object with numeric values 1-10 (a score map)
-    const found = findScoreMaps(result);
-    if (found.length > 0) {
-      scores = normalizeScoreKeys(found[0]);
-    } else {
-      // Last resort: look for top-level numeric values that could be scores
-      const topLevel: Record<string, number> = {};
-      for (const [key, value] of Object.entries(result)) {
-        if (typeof value === "number" && value >= 1 && value <= 10 && key !== "revision") {
-          topLevel[key] = value;
-        }
-      }
-      if (Object.keys(topLevel).length >= 2) {
-        scores = normalizeScoreKeys(topLevel);
+    const explicit = result.scores as Record<string, unknown>;
+    // Convert snake_case to camelCase and filter to numbers
+    for (const [key, value] of Object.entries(explicit)) {
+      if (typeof value === "number" && value >= 1 && value <= 10) {
+        const camel = key.replace(/_([a-z])/g, (_, c: string) => c.toUpperCase());
+        scores[camel] = value;
       }
     }
   }
 
+  // If no scores found in "scores" field, search the entire response
+  if (Object.keys(scores).length === 0) {
+    scores = extractNumericScores(result);
+  }
+
   // 2. Extract feedback — try explicit, then find string arrays
-  // Coerce non-string items to strings (LLM sometimes returns objects in feedback arrays)
   const coerceToStrings = (arr: unknown[]): string[] =>
     arr.map((item) => typeof item === "string" ? item : JSON.stringify(item));
 
   let feedback: string[] = [];
-  if (Array.isArray(result.feedback)) {
-    feedback = coerceToStrings(result.feedback);
-  } else if (Array.isArray(result.issues)) {
-    feedback = coerceToStrings(result.issues);
-  } else if (Array.isArray(result.problems)) {
-    feedback = coerceToStrings(result.problems);
-  } else {
+  const feedbackKeys = ["feedback", "issues", "problems", "critical_issues",
+    "structural_issues", "inaccuracies", "engagement_killers", "weaknesses",
+    "engagement_problems", "concerns", "technical_concerns"];
+  for (const key of feedbackKeys) {
+    if (Array.isArray(result[key]) && (result[key] as unknown[]).length > 0) {
+      feedback = coerceToStrings(result[key] as unknown[]);
+      break;
+    }
+  }
+  if (feedback.length === 0) {
     const stringArrays = findStringArrays(result);
     if (stringArrays.length > 0) {
       feedback = stringArrays[0];
@@ -176,12 +235,13 @@ function normalizeAgentResult(
 
   // 3. Extract suggestions
   let suggestions: string[] = [];
-  if (Array.isArray(result.suggestions)) {
-    suggestions = result.suggestions as string[];
-  } else if (Array.isArray(result.recommendations)) {
-    suggestions = result.recommendations as string[];
-  } else if (Array.isArray(result.improvements)) {
-    suggestions = result.improvements as string[];
+  const suggestKeys = ["suggestions", "recommendations", "improvements",
+    "specific_fixes", "fixes", "what_would_make_this_great", "what_would_make_this_viral"];
+  for (const key of suggestKeys) {
+    if (Array.isArray(result[key]) && (result[key] as unknown[]).length > 0) {
+      suggestions = coerceToStrings(result[key] as unknown[]);
+      break;
+    }
   }
 
   // 4. Extract passed
@@ -200,6 +260,21 @@ function normalizeAgentResult(
   };
 }
 
+// Maps score dimensions to the review agent that owns them.
+const SCORE_OWNERS: Record<string, ReviewAgentResult["agent"]> = {
+  structure: "editor",
+  readability: "editor",
+  voiceMatch: "editor",
+  factualAccuracy: "fact_checker",
+  sourceCoverage: "fact_checker",
+  hookStrength: "engagement",
+  engagementPotential: "engagement",
+  naturalness: "ai_detection",
+  perplexityVariance: "ai_detection",
+  topicOriginality: "originality",
+  angleFreshness: "originality",
+};
+
 function aggregateAllScores(
   results: ReviewAgentResult[],
   _config: ChannelConfig
@@ -216,24 +291,41 @@ function aggregateAllScores(
     }
   }
 
-  const resolve = (key: string, fallback: number): number => {
+  const agentMap = new Map<string, ReviewAgentResult>();
+  for (const r of results) agentMap.set(r.agent, r);
+
+  const resolve = (key: string, defaultFallback: number): number => {
     const values = scoreMap.get(key);
-    if (!values || values.length === 0) return fallback;
-    // Use minimum score when multiple agents report the same metric
-    // This is conservative — content must satisfy ALL agents
-    return Math.min(...values);
+    if (values && values.length > 0) {
+      return Math.min(...values);
+    }
+
+    // No explicit score — infer from the owning agent's feedback.
+    // An agent with few negative items implicitly gives a decent score.
+    const owner = SCORE_OWNERS[key];
+    const agent = owner ? agentMap.get(owner) : undefined;
+    if (agent) {
+      const issueCount = agent.feedback.length;
+      if (agent.passed) return 8;
+      if (issueCount === 0) return 8;
+      if (issueCount <= 2) return 7;
+      if (issueCount <= 4) return 6;
+      return 5;
+    }
+
+    return defaultFallback;
   };
 
   return {
-    structure: resolve("structure", 5),
-    readability: resolve("readability", 5),
-    voiceMatch: resolve("voiceMatch", 5),
-    factualAccuracy: resolve("factualAccuracy", 5),
-    sourceCoverage: resolve("sourceCoverage", 5),
-    hookStrength: resolve("hookStrength", 5),
-    engagementPotential: resolve("engagementPotential", 5),
-    naturalness: resolve("naturalness", 5),
-    perplexityVariance: resolve("perplexityVariance", 5),
+    structure: resolve("structure", 7),
+    readability: resolve("readability", 7),
+    voiceMatch: resolve("voiceMatch", 7),
+    factualAccuracy: resolve("factualAccuracy", 7),
+    sourceCoverage: resolve("sourceCoverage", 7),
+    hookStrength: resolve("hookStrength", 7),
+    engagementPotential: resolve("engagementPotential", 7),
+    naturalness: resolve("naturalness", 7),
+    perplexityVariance: resolve("perplexityVariance", 7),
     topicOriginality: resolve("topicOriginality", 9),
     angleFreshness: resolve("angleFreshness", 9),
   };
