@@ -176,21 +176,27 @@ export async function runPipeline(
   }
 
   // Stage 6: SEO Optimization (after quality gate, so we don't SEO-ify bad content)
+  // Non-critical — if it fails, publish without SEO optimization
   let seo: SeoResult | undefined;
   if (!skipSeo && review.passed) {
     callbacks?.onStageStart?.("seo");
-    const seoResult = await runSeoStage(config, draft);
-    seo = seoResult.seo;
-    totalCost += seoResult.cost;
-    callbacks?.onStageComplete?.("seo", seoResult.cost);
+    try {
+      const seoResult = await runSeoStage(config, draft);
+      seo = seoResult.seo;
+      totalCost += seoResult.cost;
+      callbacks?.onStageComplete?.("seo", seoResult.cost);
 
-    // Use the SEO-optimized content for adaptation
-    if (seo.optimizedContent) {
-      draft = {
-        ...draft,
-        content: seo.optimizedContent,
-        headline: seo.metaTitle || draft.headline,
-      };
+      // Use the SEO-optimized content for adaptation
+      if (seo.optimizedContent) {
+        draft = {
+          ...draft,
+          content: seo.optimizedContent,
+          headline: seo.metaTitle || draft.headline,
+        };
+      }
+    } catch (err) {
+      logger.warn({ channelId: config.id, err }, "SEO stage failed, publishing without SEO optimization");
+      callbacks?.onStageComplete?.("seo", 0);
     }
   }
 
