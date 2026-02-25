@@ -141,7 +141,8 @@ export async function runPipeline(
     const { polished, cost: polishCost } = await runPolishStage(
       config,
       draft,
-      review
+      review,
+      brief
     );
     draft = polished;
     totalCost += polishCost;

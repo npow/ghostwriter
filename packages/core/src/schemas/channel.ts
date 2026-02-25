@@ -97,7 +97,7 @@ export const WordPressTargetSchema = z.object({
 export const HugoTargetSchema = z.object({
   platform: z.literal("hugo"),
   id: z.string().optional(),
-  repoPath: z.string(), // Absolute path to local git repo
+  repoPath: z.string().optional(), // Resolved from connection if omitted
   contentDir: z.string().default("content/posts"), // Where to write posts
   branch: z.string().default("main"), // Git branch to push to
   tags: z.array(z.string()).default([]),

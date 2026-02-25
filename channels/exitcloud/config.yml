@@ -1,5 +1,5 @@
-id: indieops
-name: "IndieOps"
+id: exitcloud
+name: "ExitCloud"
 contentType: tutorial
 
 topic:
@@ -111,7 +111,7 @@ publishTargets:
     draft: false
 
 schedule:
-  cron: "0 9 * * MON,THU"
+  cron: "0 9 * * *"
   timezone: America/New_York
   enabled: true
 
@@ -123,9 +123,9 @@ qualityGate:
     factualAccuracy: 9
     sourceCoverage: 7
     hookStrength: 7
-    engagementPotential: 7
+    engagementPotential: 6
     naturalness: 8
-    perplexityVariance: 7
+    perplexityVariance: 6
     topicOriginality: 7
     angleFreshness: 7
   maxRevisions: 3
