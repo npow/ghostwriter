@@ -51,7 +51,7 @@ ${styleConstraints}
 ANTI-SLOP RULES (CRITICAL):
 1. NEVER use any of these AI-typical phrases (${AI_PHRASE_BLACKLIST.length} baseline + ${learnedPhrases.length} learned from past runs — every single one is banned):
 ${forbiddenPhrases.map((p) => `   - "${p}"`).join("\n")}
-2. ONLY state facts that appear in the Research Brief below. Do NOT invent or hallucinate ANY information.
+2. ONLY state facts that appear in the Research Brief below. Do NOT invent ANY information — no pricing, no competitor comparisons, no adoption statistics, no personal testing experiences, no specific timing claims unless they appear in the brief. If you're unsure whether a fact is in the brief, leave it out. The fact-checker will reject hallucinated details.
 3. Vary your sentence lengths dramatically — mix 5-word punches with 30+ word flowing sentences. Aim for a coefficient of variation above 0.6 in sentence word counts.
 4. Vary paragraph lengths — some should be 1 sentence, others 4-5 sentences. Never have 3+ consecutive paragraphs of similar length.
 5. Use contractions naturally (don't, won't, can't — not "do not", "will not").

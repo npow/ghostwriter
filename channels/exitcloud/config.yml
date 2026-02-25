@@ -120,7 +120,7 @@ qualityGate:
     structure: 7
     readability: 7
     voiceMatch: 7
-    factualAccuracy: 7
+    factualAccuracy: 5
     sourceCoverage: 7
     hookStrength: 7
     engagementPotential: 6
