@@ -76,12 +76,23 @@ Apply the feedback and return the improved article.`;
 
   const polishedWordCount = result.content.split(/\s+/).length;
 
-  // Reject polished content that lost more than 30% of its word count —
-  // the LLM sometimes summarizes instead of editing
+  // Reject polished content that changed word count by more than 30% —
+  // the LLM sometimes summarizes (shrinks) or pads (grows) instead of editing
   if (polishedWordCount < currentWordCount * 0.7) {
     logger.warn(
       { channelId: config.id, original: currentWordCount, polished: polishedWordCount },
       "Polish shrank content too much — keeping original draft"
+    );
+    return {
+      polished: { ...draft, revision: draft.revision + 1 },
+      cost: result.cost,
+    };
+  }
+
+  if (polishedWordCount > currentWordCount * 1.3) {
+    logger.warn(
+      { channelId: config.id, original: currentWordCount, polished: polishedWordCount },
+      "Polish grew content too much — keeping original draft"
     );
     return {
       polished: { ...draft, revision: draft.revision + 1 },
