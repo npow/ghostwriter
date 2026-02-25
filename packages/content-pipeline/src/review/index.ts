@@ -70,6 +70,21 @@ export async function runReviewStage(
       });
   }
 
+  // Log raw results to debug score extraction
+  for (const [name, raw] of [
+    ["editor", editor.result],
+    ["fact_checker", factChecker.result],
+    ["engagement", engagement.result],
+    ["ai_detection", aiDetection.result],
+    ["originality", originality.result],
+  ] as const) {
+    const r = raw as Record<string, unknown>;
+    logger.info(
+      { agent: name, hasScores: !!r.scores, scoreKeys: r.scores ? Object.keys(r.scores as object) : [], topLevelKeys: Object.keys(r).filter(k => k !== "agent") },
+      "Raw review agent result"
+    );
+  }
+
   const agentResults = [
     normalizeAgentResult(editor.result, "editor"),
     normalizeAgentResult(factChecker.result, "fact_checker"),
@@ -141,13 +156,17 @@ function normalizeAgentResult(
   }
 
   // 2. Extract feedback — try explicit, then find string arrays
+  // Coerce non-string items to strings (LLM sometimes returns objects in feedback arrays)
+  const coerceToStrings = (arr: unknown[]): string[] =>
+    arr.map((item) => typeof item === "string" ? item : JSON.stringify(item));
+
   let feedback: string[] = [];
   if (Array.isArray(result.feedback)) {
-    feedback = result.feedback as string[];
+    feedback = coerceToStrings(result.feedback);
   } else if (Array.isArray(result.issues)) {
-    feedback = result.issues as string[];
+    feedback = coerceToStrings(result.issues);
   } else if (Array.isArray(result.problems)) {
-    feedback = result.problems as string[];
+    feedback = coerceToStrings(result.problems);
   } else {
     const stringArrays = findStringArrays(result);
     if (stringArrays.length > 0) {
