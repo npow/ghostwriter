@@ -60,7 +60,11 @@ ${articleHistory ? `\n${articleHistory}\n` : ""}Respond with JSON:
 
   const outline: ContentOutline = {
     channelId: config.id,
-    ...data,
+    headline: data.headline ?? "",
+    hook: data.hook ?? "",
+    sections: data.sections ?? [],
+    conclusion: data.conclusion ?? "",
+    estimatedWordCount: data.estimatedWordCount ?? config.targetWordCount,
   };
 
   logger.info(

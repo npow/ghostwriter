@@ -182,8 +182,8 @@ export async function callLlmJson<T>(
     const jsonMatch = result.content.match(/```(?:json)?\s*([\s\S]*?)```/);
     const jsonStr = jsonMatch ? jsonMatch[1].trim() : result.content.trim();
 
-    logger.debug(
-      { attempt: attempt + 1, rawLength: result.content.length, jsonLength: jsonStr.length, preview: jsonStr.slice(0, 200) },
+    logger.info(
+      { attempt: attempt + 1, rawLength: result.content.length, jsonLength: jsonStr.length, usedCodeBlock: !!jsonMatch, preview: jsonStr.slice(0, 300) },
       "Extracted JSON from LLM response"
     );
 
