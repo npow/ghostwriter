@@ -8,7 +8,7 @@ import type {
   PublicationHistory,
 } from "@ghostwriter/core";
 import { createChildLogger, mergeDiscoveredPatterns } from "@ghostwriter/core";
-import { findStringArrays } from "../llm.js";
+import { callLlmJson, findStringArrays } from "../llm.js";
 import { runEditorReview } from "./editor.js";
 import { runFactCheckerReview } from "./fact-checker.js";
 import { runEngagementReview } from "./engagement.js";
@@ -51,7 +51,7 @@ export async function runReviewStage(
       runOriginalityReview(config, draft, publicationHistory),
     ]);
 
-  const totalCost =
+  let totalCost =
     editor.cost + factChecker.cost + engagement.cost + aiDetection.cost + originality.cost;
 
   // Persist any newly discovered AI patterns (non-blocking)
@@ -70,13 +70,24 @@ export async function runReviewStage(
       });
   }
 
-  const agentResults = [
+  let agentResults = [
     normalizeAgentResult(editor.result, "editor"),
     normalizeAgentResult(factChecker.result, "fact_checker"),
     normalizeAgentResult(engagement.result, "engagement"),
     normalizeAgentResult(aiDetection.result, "ai_detection"),
     normalizeAgentResult(originality.result, "originality"),
   ];
+
+  // For agents missing expected scores, run a focused scoring LLM call.
+  // This handles the case where the LLM proxy causes agents to return
+  // freeform JSON without the requested numeric scores.
+  const scoringResults = await extractMissingScores(agentResults, [
+    { agent: "editor", raw: editor.result, dimensions: ["structure", "readability", "voiceMatch"] },
+    { agent: "fact_checker", raw: factChecker.result, dimensions: ["factualAccuracy", "sourceCoverage"] },
+    { agent: "engagement", raw: engagement.result, dimensions: ["hookStrength", "engagementPotential"] },
+  ]);
+  totalCost += scoringResults.cost;
+  agentResults = scoringResults.results;
 
   const aggregateScores = aggregateAllScores(agentResults, config);
   // Determine pass/fail from scores vs configured thresholds, not agent self-reports
@@ -104,6 +115,109 @@ export async function runReviewStage(
   );
 
   return { review, cost: totalCost };
+}
+
+// ─── Score extraction via LLM ───
+// When agents return freeform reviews without numeric scores (common with LLM proxies),
+// make a focused second call to extract scores from the review text.
+
+interface AgentScoringSpec {
+  agent: string;
+  raw: ReviewAgentResult;
+  dimensions: string[];
+}
+
+async function extractMissingScores(
+  agentResults: ReviewAgentResult[],
+  specs: AgentScoringSpec[],
+): Promise<{ results: ReviewAgentResult[]; cost: number }> {
+  let totalScoringCost = 0;
+  const updatedResults = [...agentResults];
+
+  // Find agents that need scoring (missing expected dimensions)
+  const needsScoring: AgentScoringSpec[] = [];
+  for (const spec of specs) {
+    const result = updatedResults.find((r) => r.agent === spec.agent);
+    if (!result) continue;
+    const missingDims = spec.dimensions.filter(
+      (d) => !(d in result.scores) || typeof result.scores[d] !== "number"
+    );
+    if (missingDims.length > 0) {
+      needsScoring.push({ ...spec, dimensions: missingDims });
+    }
+  }
+
+  if (needsScoring.length === 0) return { results: updatedResults, cost: 0 };
+
+  logger.info(
+    { agents: needsScoring.map((s) => s.agent), dims: needsScoring.map((s) => s.dimensions) },
+    "Extracting missing scores via LLM"
+  );
+
+  // Run scoring calls in parallel for all agents that need them
+  const scoringPromises = needsScoring.map(async (spec) => {
+    const reviewSummary = JSON.stringify(spec.raw, null, 2).slice(0, 3000);
+
+    const systemPrompt = `Read this content review and provide numeric scores (1-10) for each dimension listed below.
+
+SCORING DIMENSIONS:
+${spec.dimensions.map((d) => `- ${d}`).join("\n")}
+
+SCORING GUIDE:
+- 9-10: Exceptional, professional quality, no significant issues
+- 7-8: Good, minor issues only, publishable with small tweaks
+- 5-6: Mediocre, several issues that need addressing
+- 3-4: Poor, major issues, needs significant revision
+- 1-2: Unacceptable, fundamental problems
+
+Be honest and calibrated. Most decent content scores 6-8.
+
+Respond with JSON mapping each dimension to a score:
+{${spec.dimensions.map((d) => `"${d}": N`).join(", ")}}`;
+
+    try {
+      const { data, cost } = await callLlmJson<Record<string, number>>(
+        "sonnet",
+        systemPrompt,
+        `REVIEW TO SCORE:\n${reviewSummary}`
+      );
+
+      const scores: Record<string, number> = {};
+      for (const dim of spec.dimensions) {
+        // Check both camelCase and snake_case
+        const snakeKey = dim.replace(/[A-Z]/g, (c) => `_${c.toLowerCase()}`);
+        const val = data[dim] ?? data[snakeKey];
+        if (typeof val === "number" && val >= 1 && val <= 10) {
+          scores[dim] = val;
+        }
+      }
+
+      return { agent: spec.agent, scores, cost };
+    } catch (err) {
+      logger.warn({ agent: spec.agent, err }, "Score extraction LLM call failed");
+      return { agent: spec.agent, scores: {} as Record<string, number>, cost: 0 };
+    }
+  });
+
+  const scoringResults = await Promise.all(scoringPromises);
+
+  // Merge extracted scores back into agent results
+  for (const { agent, scores, cost } of scoringResults) {
+    totalScoringCost += cost;
+    const idx = updatedResults.findIndex((r) => r.agent === agent);
+    if (idx >= 0 && Object.keys(scores).length > 0) {
+      updatedResults[idx] = {
+        ...updatedResults[idx],
+        scores: { ...updatedResults[idx].scores, ...scores },
+      };
+      logger.info(
+        { agent, extractedScores: scores, cost },
+        "Extracted scores from review"
+      );
+    }
+  }
+
+  return { results: updatedResults, cost: totalScoringCost };
 }
 
 // ─── Score dimension fuzzy mapping ───
