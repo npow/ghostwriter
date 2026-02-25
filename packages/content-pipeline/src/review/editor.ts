@@ -12,7 +12,9 @@ export async function runEditorReview(
 
 Evaluate the following aspects:
 
-1. **Structure** (1-10): Is the piece well-organized? Good flow between sections? Strong intro and conclusion? IMPORTANT: The article MUST include a "Cheat Sheet" or "Quick Reference" summary section near the end (before any FAQ). This should be a scannable table or bullet list recapping every tool, technique, or tip mentioned. If this section is missing, cap the structure score at 5. If it exists but is incomplete (missing tools/tips from the body), cap at 7.
+1. **Structure** (1-10): Is the piece well-organized? Good flow between sections? Strong intro and conclusion?
+   - CHEAT SHEET: The article MUST include a "Cheat Sheet" or "Quick Reference" summary section near the end (before any FAQ). This should be a scannable table or bullet list recapping every tool, technique, or tip mentioned. If this section is missing, cap the structure score at 5. If it exists but is incomplete (missing tools/tips from the body), cap at 7.
+   - INLINE LINKS: Every tool, project, or service mentioned in the body text must be a markdown hyperlink on its first mention (e.g. "[Caddy](https://caddyserver.com/)"). Count the named tools/projects in the body and count the inline markdown links. If fewer than half of named tools have inline links, cap the structure score at 5. If some are missing, cap at 7. Links in the Cheat Sheet table do NOT count — the body must link independently.
 2. **Readability** (1-10): Is it easy to read? Good sentence variety? Clear language? Appropriate for the target audience?
 3. **Voice Match** (1-10): Does it sound like ${config.voice.name}? Tone: ${config.voice.tone}. ${config.voice.persona}
 
