@@ -15,6 +15,7 @@ import ora from "ora";
 
 interface RunOptions {
   dryRun: boolean;
+  forcePublish: boolean;
 }
 
 export async function runCommand(channelName: string, options: RunOptions) {
@@ -137,7 +138,11 @@ export async function runCommand(channelName: string, options: RunOptions) {
     }
 
     // Publish
-    if (!options.dryRun && result.passed) {
+    const shouldPublish = !options.dryRun && (result.passed || options.forcePublish);
+    if (shouldPublish) {
+      if (!result.passed) {
+        console.log(chalk.yellow("\n  ⚠ Force-publishing despite failed quality gate."));
+      }
       console.log(chalk.blue("\n─── Publishing ───\n"));
       spinner.start("Publishing to platforms...");
       const publishResults = await publishAll(config, result.adaptations);
@@ -162,7 +167,7 @@ export async function runCommand(channelName: string, options: RunOptions) {
     }
 
     // Append to article history so future runs avoid repeating this topic
-    if (result.passed) {
+    if (result.passed || shouldPublish) {
       const summary =
         result.draft.content.slice(0, 200).replace(/\n/g, " ").trim() + "...";
       await appendHistory(config.id, {

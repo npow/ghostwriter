@@ -33,6 +33,7 @@ program
   .command("run <channel-name>")
   .description("Run the content pipeline for a channel")
   .option("--dry-run", "Generate content without publishing", false)
+  .option("--force-publish", "Publish even if quality gate fails", false)
   .action(runCommand);
 
 program
