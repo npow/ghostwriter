@@ -20,8 +20,8 @@ services:
       redis:
         condition: service_healthy
     environment:
-      - ANTHROPIC_BASE_URL=http://cliproxy:8317
-      - ANTHROPIC_API_KEY=${CLIPROXY_API_KEY:-your-api-key-1}
+      - ANTHROPIC_BASE_URL=http://upshot-claude-relay-1:18082
+      - ANTHROPIC_API_KEY=unused
       - REDIS_URL=redis://redis:6379
     volumes:
       # SSH keys for git push to GitHub
