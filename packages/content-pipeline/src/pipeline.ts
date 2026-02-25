@@ -17,6 +17,7 @@ import {
   runPolishStage,
   runSeoStage,
   runAdaptStage,
+  verifyLinks,
 } from "./stages/index.js";
 import { runReviewStage, runFactCheckerReview } from "./review/index.js";
 import type { SeoResult } from "./stages/seo.js";
@@ -187,7 +188,33 @@ export async function runPipeline(
     }
   }
 
-  // Stage 7: Adapt for platforms
+  // Stage 7: Verify links
+  if (review.passed) {
+    callbacks?.onStageStart?.("verify-links");
+    const linkResult = await verifyLinks(draft.content);
+    callbacks?.onStageComplete?.("verify-links", 0);
+
+    if (linkResult.broken.length > 0) {
+      logger.warn(
+        {
+          channelId: config.id,
+          broken: linkResult.broken.map((b) => ({ url: b.url, status: b.status })),
+        },
+        "Broken links detected — removing from content"
+      );
+
+      // Strip broken links from content (convert to plain text)
+      let cleaned = draft.content;
+      for (const broken of linkResult.broken) {
+        const escaped = broken.url.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        const linkPattern = new RegExp(`\\[([^\\]]+)\\]\\(${escaped}\\)`, "g");
+        cleaned = cleaned.replace(linkPattern, "$1");
+      }
+      draft = { ...draft, content: cleaned };
+    }
+  }
+
+  // Stage 8: Adapt for platforms
   let adaptations: PlatformContent[] = [];
   if (!skipAdapt) {
     callbacks?.onStageStart?.("adapt");

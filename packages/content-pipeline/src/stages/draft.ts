@@ -60,14 +60,22 @@ ${forbiddenPhrases.map((p) => `   - "${p}"`).join("\n")}
 8. Write like you're talking to a friend who's smart but not an expert.
 9. Avoid the 5-paragraph essay structure. Don't mirror section lengths. Some sections should be 2 sentences, others 8+.
 10. Never use a numbered list of "key takeaways" or "key points" — weave insights into the narrative instead.
+11. INLINE SOURCE LINKS: When citing a specific claim, tool, project, or data point that has a sourceUrl in the research brief, link to it naturally using markdown links. For example: "[37signals moved 5 petabytes](https://url)". Every major claim should link to its source. Do NOT dump a list of links at the end — weave them into the text where the claim appears.
 
 ${revision ? `REVISION ${revision.number}: Address this feedback:\n${revision.feedback.map((f) => `- ${f}`).join("\n")}` : ""}
 
 ${performanceContext ? `\n${performanceContext}\n` : ""}
 Write the full ${config.contentType} in markdown format. Target: ${config.targetWordCount} words.`;
 
-  const userPrompt = `RESEARCH BRIEF:
-${JSON.stringify(brief.keyFacts, null, 2)}
+  const formattedFacts = brief.keyFacts
+    .map((f) => {
+      const url = f.sourceUrl ? ` | URL: ${f.sourceUrl}` : "";
+      return `- ${f.fact} [source: ${f.source}${url}]`;
+    })
+    .join("\n");
+
+  const userPrompt = `RESEARCH BRIEF (each fact includes its source and URL — use these as inline markdown links):
+${formattedFacts}
 
 DATA POINTS:
 ${JSON.stringify(brief.dataPoints, null, 2)}
@@ -75,7 +83,7 @@ ${JSON.stringify(brief.dataPoints, null, 2)}
 OUTLINE:
 ${JSON.stringify(outline, null, 2)}
 
-Write the full article now. Start with the headline as an H1, then the content. Remember: ONLY use facts from the research brief.`;
+Write the full article now. Start with the headline as an H1, then the content. Remember: ONLY use facts from the research brief, and LINK to sources inline.`;
 
   const result = await callLlm("opus", systemPrompt, userPrompt, {
     maxTokens: 8192,
