@@ -93,9 +93,16 @@ Write the full article now. Start with the headline as an H1, then the content. 
 
   const wordCount = result.content.split(/\s+/).length;
 
+  // Extract headline from content H1 if outline headline is empty
+  let headline = outline.headline;
+  if (!headline) {
+    const h1Match = result.content.match(/^#\s+(.+)$/m);
+    if (h1Match) headline = h1Match[1].trim();
+  }
+
   const draft: ContentDraft = {
     channelId: config.id,
-    headline: outline.headline,
+    headline,
     content: result.content,
     wordCount,
     revision: revision?.number ?? 0,

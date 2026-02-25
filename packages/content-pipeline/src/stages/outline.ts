@@ -58,11 +58,30 @@ ${articleHistory ? `\n${articleHistory}\n` : ""}Respond with JSON:
     userPrompt
   );
 
+  // Extract sections from various LLM response structures
+  let sections: ContentOutline["sections"] = [];
+  if (Array.isArray(raw.sections)) {
+    sections = raw.sections as ContentOutline["sections"];
+  } else if (Array.isArray(raw.outline)) {
+    // LLM sometimes uses "outline" as the sections array
+    sections = (raw.outline as Array<Record<string, unknown>>).map((s) => ({
+      title: String(s.title ?? s.heading ?? s.section ?? ""),
+      keyPoints: Array.isArray(s.keyPoints) ? s.keyPoints as string[]
+        : Array.isArray(s.key_points) ? s.key_points as string[]
+        : Array.isArray(s.points) ? s.points as string[]
+        : [],
+      assignedDataPoints: Array.isArray(s.assignedDataPoints) ? s.assignedDataPoints as string[] : [],
+      targetWordCount: (s.targetWordCount ?? s.target_word_count ?? 250) as number,
+    }));
+  }
+
+  const headline = String(raw.headline ?? raw.title ?? raw.working_title ?? "");
+
   const outline: ContentOutline = {
     channelId: config.id,
-    headline: (raw.headline ?? raw.title ?? "") as string,
+    headline,
     hook: (raw.hook ?? raw.opening_hook ?? raw.intro ?? "") as string,
-    sections: (raw.sections ?? []) as ContentOutline["sections"],
+    sections,
     conclusion: (raw.conclusion ?? raw.closing ?? "") as string,
     estimatedWordCount: (raw.estimatedWordCount ?? raw.estimated_word_count ?? config.targetWordCount) as number,
   };
