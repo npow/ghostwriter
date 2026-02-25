@@ -1,11 +1,28 @@
 services:
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - redis-data:/data
+    networks:
+      - recon_default
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
   ghostwriter:
     build:
       context: ..
       dockerfile: Dockerfile
+    depends_on:
+      redis:
+        condition: service_healthy
     environment:
       - ANTHROPIC_BASE_URL=http://cliproxy:8317
       - ANTHROPIC_API_KEY=${CLIPROXY_API_KEY:-your-api-key-1}
+      - REDIS_URL=redis://redis:6379
     volumes:
       # SSH keys for git push to GitHub
       - ${HOME}/.ssh:/root/.ssh:ro
@@ -20,3 +37,6 @@ services:
 networks:
   recon_default:
     external: true
+
+volumes:
+  redis-data:

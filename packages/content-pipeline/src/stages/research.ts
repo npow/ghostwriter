@@ -85,7 +85,10 @@ Respond with JSON matching this structure:
 
   const brief: ResearchBrief = {
     channelId: config.id,
-    ...data,
+    summary: data.summary ?? "",
+    keyFacts: data.keyFacts ?? [],
+    narrativeAngles: data.narrativeAngles ?? [],
+    dataPoints: data.dataPoints ?? {},
     sources,
   };
 
