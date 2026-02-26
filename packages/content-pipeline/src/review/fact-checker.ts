@@ -44,12 +44,18 @@ Score:
 - **Factual Accuracy** (1-10): Are verifiable claims supported by sources? 10 = every concrete fact verified, 1 = many hallucinated statistics/features
 - **Source Coverage** (1-10): How well does the draft use the available data? 10 = all key facts used, 1 = most data ignored
 
+CRITICAL: For every hallucination you flag, you MUST provide an actionable correction in "suggestions" using actual data from the research brief. The writer needs to know what to replace the hallucinated claim with. Format each suggestion as:
+- "REPLACE: '<hallucinated text>' → '<corrected text using brief data>' (source: <brief fact>)"
+- If there's no relevant brief fact to substitute, say: "REMOVE: '<hallucinated text>' — no supporting data in brief. Use qualitative language instead (e.g., 'significantly cheaper' instead of specific pricing)."
+
+Also include suggestions for unused brief facts that would strengthen the article.
+
 Respond with JSON:
 {
   "scores": { "factualAccuracy": N, "sourceCoverage": N },
   "passed": true/false (true if all scores >= ${config.qualityGate.minScores.factualAccuracy}),
-  "feedback": ["issue 1 - specific hallucinated or unsupported claim"],
-  "suggestions": ["Replace X with Y from the brief", "Add data point about Z"]
+  "feedback": ["HALLUCINATION: '<exact quote>' — <why it's wrong>"],
+  "suggestions": ["REPLACE: '<old>' → '<new>' (source: <brief fact>)", "ADD: <unused brief fact that would improve the article>"]
 }`;
 
   const userPrompt = `RESEARCH BRIEF (ground truth):

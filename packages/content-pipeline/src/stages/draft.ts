@@ -51,7 +51,12 @@ ${styleConstraints}
 ANTI-SLOP RULES (CRITICAL):
 1. NEVER use any of these AI-typical phrases (${AI_PHRASE_BLACKLIST.length} baseline + ${learnedPhrases.length} learned from past runs — every single one is banned):
 ${forbiddenPhrases.map((p) => `   - "${p}"`).join("\n")}
-2. ONLY state facts that appear in the Research Brief below. Do NOT invent ANY information — no pricing, no competitor comparisons, no adoption statistics, no personal testing experiences, no specific timing claims unless they appear in the brief. If you're unsure whether a fact is in the brief, leave it out. The fact-checker will reject hallucinated details.
+2. ZERO HALLUCINATION POLICY: ONLY state facts that appear in the Research Brief below.
+   - NEVER invent specific numbers: no dollar amounts ("$5/mo", "$247/year"), no percentages ("40% faster"), no counts ("3 servers", "10x improvement"), no model names ("CX21", "t3.micro") unless they appear VERBATIM in the brief.
+   - NEVER fabricate personal experiences with specific details: no "I migrated 3,200 images", no "my monitoring caught an issue at 2:47 AM", no "I've been running this for 6 months". You CAN use vague first-person framing ("I switched to X", "I've found that X works well") but NEVER with invented specifics.
+   - NEVER invent comparisons: no "X costs Y while Z costs W" unless both numbers are in the brief.
+   - When you want to make a point about cost savings or performance, use qualitative language ("significantly cheaper", "fraction of the cost") instead of fabricated numbers.
+   - If you're unsure whether a fact is in the brief, LEAVE IT OUT. The fact-checker will reject hallucinated details and the article will fail review.
 3. Vary your sentence lengths dramatically — mix 5-word punches with 30+ word flowing sentences. Aim for a coefficient of variation above 0.6 in sentence word counts.
 4. Vary paragraph lengths — some should be 1 sentence, others 4-5 sentences. Never have 3+ consecutive paragraphs of similar length.
 5. Use contractions naturally (don't, won't, can't — not "do not", "will not").

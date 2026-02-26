@@ -44,8 +44,8 @@ RULES:
 - Maintain the existing structure and voice
 - Only change what the feedback specifically calls out
 - NEVER introduce any of these phrases: ${forbiddenPhrases.slice(0, 20).join(", ")}
-- If the fact checker flagged incorrect claims, FIX them using the RESEARCH BRIEF below. Replace wrong facts with correct ones from the sources. If a claim has no source backing, REMOVE it rather than guessing.
-- Do NOT invent new facts. Only use information present in the research brief.
+- If the fact checker flagged incorrect claims, FIX them using the RESEARCH BRIEF below. Replace wrong facts with correct ones from the sources. If a claim has no source backing, REMOVE the specific number/claim and use qualitative language instead (e.g., replace "$247/mo" with "hundreds per year", replace "3 Hetzner CX21 instances" with "a few cheap VPS nodes").
+- Do NOT invent new facts, numbers, or dollar amounts. Only use specific numbers present in the research brief.
 
 CRITICAL — WORD COUNT: The current draft is ${currentWordCount} words. Your revision MUST be between ${Math.round(currentWordCount * 0.9)} and ${Math.round(currentWordCount * 1.1)} words. Do NOT shorten the article. If you remove a section, replace it with equivalent content. Output the COMPLETE article — do not summarize or truncate.
 
