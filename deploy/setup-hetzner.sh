@@ -54,13 +54,16 @@ echo "==> Building ghostwriter image..."
 cd "$GHOSTWRITER_DIR"
 docker compose -f deploy/docker-compose.prod.yml build
 
-echo "==> Installing cron.d file (9 AM ET = 14:00 UTC)..."
-cp "$GHOSTWRITER_DIR/deploy/cron.d/ghostwriter" /etc/cron.d/ghostwriter
-chmod 644 /etc/cron.d/ghostwriter
-# Remove legacy user crontab entry if present
+echo "==> Setting up shared scheduler..."
+docker volume create scheduler-cron 2>/dev/null || true
+# Install cron file to shared volume
+docker compose -f deploy/docker-compose.prod.yml run --rm cron-install
+# Start scheduler (if not already running from another project)
+docker compose -f deploy/docker-compose.prod.yml --profile scheduler up -d scheduler
+# Remove legacy host cron entries
+rm -f /etc/cron.d/ghostwriter
 (crontab -l 2>/dev/null | grep -v ghostwriter) | crontab - || true
 
-echo "==> Done! Cron schedule:"
-cat /etc/cron.d/ghostwriter
+echo "==> Done!"
 echo ""
 echo "Test with: cd $GHOSTWRITER_DIR && docker compose -f deploy/docker-compose.prod.yml run --rm ghostwriter"

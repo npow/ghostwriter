@@ -42,4 +42,6 @@ jobs:
             git pull origin main
             docker compose -f deploy/docker-compose.prod.yml build
             docker image prune -f
-            cp deploy/cron.d/ghostwriter /etc/cron.d/ghostwriter && chmod 644 /etc/cron.d/ghostwriter
+            docker volume create scheduler-cron 2>/dev/null || true
+            docker compose -f deploy/docker-compose.prod.yml run --rm cron-install
+            docker compose -f deploy/docker-compose.prod.yml --profile scheduler up -d scheduler
