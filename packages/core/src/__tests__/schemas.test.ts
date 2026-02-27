@@ -44,6 +44,8 @@ describe("ReviewScoresSchema", () => {
       engagementPotential: 8,
       naturalness: 9,
       perplexityVariance: 7,
+      topicOriginality: 8,
+      angleFreshness: 7,
     };
     expect(ReviewScoresSchema.parse(scores)).toEqual(scores);
   });
@@ -59,6 +61,8 @@ describe("ReviewScoresSchema", () => {
       engagementPotential: 8,
       naturalness: 9,
       perplexityVariance: 7,
+      topicOriginality: 8,
+      angleFreshness: 7,
     };
     expect(() => ReviewScoresSchema.parse(scores)).toThrow();
   });
@@ -74,6 +78,8 @@ describe("ReviewScoresSchema", () => {
       engagementPotential: 8,
       naturalness: 9,
       perplexityVariance: 7,
+      topicOriginality: 8,
+      angleFreshness: 7,
     };
     expect(() => ReviewScoresSchema.parse(scores)).toThrow();
   });

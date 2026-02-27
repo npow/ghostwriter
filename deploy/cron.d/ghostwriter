@@ -1,0 +1,3 @@
+# Ghostwriter daily pipeline - 9 AM ET / 14:00 UTC
+SHELL=/bin/bash
+0 14 * * * root docker rm -f $(docker ps -q --filter "name=deploy-ghostwriter-run") 2>/dev/null; cd /root/ghostwriter && timeout 50m docker compose -f deploy/docker-compose.prod.yml run --rm ghostwriter >> /var/log/ghostwriter.log 2>&1

@@ -185,5 +185,7 @@ export async function runCommand(channelName: string, options: RunOptions) {
       `Pipeline failed: ${err instanceof Error ? err.message : err}`
     );
     process.exitCode = 1;
+  } finally {
+    process.exit();
   }
 }

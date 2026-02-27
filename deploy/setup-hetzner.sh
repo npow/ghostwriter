@@ -54,11 +54,13 @@ echo "==> Building ghostwriter image..."
 cd "$GHOSTWRITER_DIR"
 docker compose -f deploy/docker-compose.prod.yml build
 
-echo "==> Setting up cron (9 AM ET = 14:00 UTC)..."
-CRON_LINE="0 14 * * * cd $GHOSTWRITER_DIR && docker compose -f deploy/docker-compose.prod.yml run --rm ghostwriter >> /var/log/ghostwriter.log 2>&1"
-(crontab -l 2>/dev/null | grep -v ghostwriter; echo "$CRON_LINE") | crontab -
+echo "==> Installing cron.d file (9 AM ET = 14:00 UTC)..."
+cp "$GHOSTWRITER_DIR/deploy/cron.d/ghostwriter" /etc/cron.d/ghostwriter
+chmod 644 /etc/cron.d/ghostwriter
+# Remove legacy user crontab entry if present
+(crontab -l 2>/dev/null | grep -v ghostwriter) | crontab - || true
 
 echo "==> Done! Cron schedule:"
-crontab -l | grep ghostwriter
+cat /etc/cron.d/ghostwriter
 echo ""
 echo "Test with: cd $GHOSTWRITER_DIR && docker compose -f deploy/docker-compose.prod.yml run --rm ghostwriter"
