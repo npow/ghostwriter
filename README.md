@@ -1,6 +1,7 @@
 # Ghostwriter
 
 [![CI](https://github.com/npow/ghostwriter/actions/workflows/ci.yml/badge.svg)](https://github.com/npow/ghostwriter/actions/workflows/ci.yml)
+![ghostwriter](https://hc.deeprecon.app/b/2/c96ac86c-ba5e-4242-be06-bc75ee71aef3.svg)
 [![npm](https://img.shields.io/npm/v/@npow/ghostwriter)](https://www.npmjs.com/package/@npow/ghostwriter)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Node](https://img.shields.io/badge/node-%3E%3D22-brightgreen)](https://nodejs.org)
