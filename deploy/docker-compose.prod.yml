@@ -12,6 +12,28 @@ services:
       timeout: 3s
       retries: 3
 
+  # Shared claude-relay — built by upshot, referenced here by image.
+  # Activate with: docker compose --profile relay up -d claude-relay
+  # Only one instance needed per host; whichever project starts it first wins.
+  claude-relay:
+    image: claude-relay:latest
+    container_name: claude-relay
+    profiles: [relay]
+    networks:
+      - recon_default
+    environment:
+      CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: "1"
+    volumes:
+      - ${HOME}/.claude:/root/.claude
+      - ${HOME}/.claude.json:/root/.claude.json:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:18082/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
   ghostwriter:
     build:
       context: ..
@@ -20,7 +42,7 @@ services:
       redis:
         condition: service_healthy
     environment:
-      - ANTHROPIC_BASE_URL=http://upshot-claude-relay-1:18082
+      - ANTHROPIC_BASE_URL=http://claude-relay:18082
       - ANTHROPIC_API_KEY=unused
       - REDIS_URL=redis://redis:6379
     volumes:
