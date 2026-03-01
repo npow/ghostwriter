@@ -42,8 +42,10 @@ services:
       redis:
         condition: service_healthy
     environment:
-      - ANTHROPIC_BASE_URL=http://claude-relay:18082
-      - ANTHROPIC_API_KEY=unused
+      - OPENAI_BASE_URL=http://cliproxy:8317/v1
+      - OPENAI_API_KEY=${CLIPROXY_API_KEY}
+      - OPENAI_MODEL_SONNET=gpt-5.1
+      - OPENAI_MODEL_OPUS=gpt-5
       - REDIS_URL=redis://redis:6379
     volumes:
       # SSH keys for git push to GitHub

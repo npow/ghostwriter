@@ -16,11 +16,16 @@ function getClient(): Anthropic {
 
 export type ModelTier = "opus" | "sonnet";
 
-type Provider = "anthropic" | "gemini";
+type Provider = "anthropic" | "gemini" | "openai_compat";
 
 const MODEL_MAP: Record<ModelTier, string> = {
   opus: "claude-opus-4-6",
   sonnet: "claude-sonnet-4-5-20250929",
+};
+
+const OPENAI_MODEL_MAP: Record<ModelTier, string> = {
+  sonnet: process.env.OPENAI_MODEL_SONNET || "gpt-5.1",
+  opus: process.env.OPENAI_MODEL_OPUS || "gpt-5",
 };
 
 const GEMINI_MODEL_MAP: Record<ModelTier, string> = {
@@ -42,14 +47,83 @@ const PRICING: Record<string, { input: number; output: number }> = {
   "claude-sonnet-4-5-20250929": { input: 3, output: 15 },
   "gemini-2.0-flash": { input: 0.1, output: 0.4 },
   "gemini-2.5-pro": { input: 1.25, output: 5 },
+  "gpt-5.1": { input: 1.25, output: 10 },
+  "gpt-5": { input: 1.25, output: 10 },
 };
 
 function detectProvider(): Provider {
+  if (process.env.OPENAI_API_KEY && process.env.OPENAI_BASE_URL) return "openai_compat";
   if (process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_BASE_URL) return "anthropic";
   if (process.env.GEMINI_API_KEY) return "gemini";
   throw new Error(
-    "No LLM provider found. Set ANTHROPIC_API_KEY, ANTHROPIC_BASE_URL, or GEMINI_API_KEY."
+    "No LLM provider found. Set OPENAI_API_KEY+OPENAI_BASE_URL, ANTHROPIC_API_KEY, ANTHROPIC_BASE_URL, or GEMINI_API_KEY."
   );
+}
+
+function openaiCompatChatCompletionsUrl(baseUrl: string): string {
+  const trimmed = baseUrl.replace(/\/$/, "");
+  return trimmed.endsWith("/v1") ? `${trimmed}/chat/completions` : `${trimmed}/v1/chat/completions`;
+}
+
+async function callOpenAICompat(
+  tier: ModelTier,
+  systemPrompt: string,
+  userPrompt: string,
+  options?: { maxTokens?: number; temperature?: number; prefill?: string }
+): Promise<LlmCallResult> {
+  const apiKey = process.env.OPENAI_API_KEY!;
+  const baseUrl = process.env.OPENAI_BASE_URL!;
+  const model = OPENAI_MODEL_MAP[tier];
+  const url = openaiCompatChatCompletionsUrl(baseUrl);
+
+  logger.debug({ model, baseUrl, systemLength: systemPrompt.length }, "Calling OpenAI-compatible LLM");
+
+  const messages: Array<{ role: "system" | "user" | "assistant"; content: string }> = [
+    { role: "system", content: systemPrompt },
+    { role: "user", content: userPrompt },
+  ];
+  if (options?.prefill) {
+    messages.push({ role: "assistant", content: options.prefill });
+  }
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model,
+      messages,
+      temperature: options?.temperature ?? 1,
+      max_tokens: options?.maxTokens ?? 8192,
+    }),
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`OpenAI-compatible API error ${response.status}: ${text}`);
+  }
+
+  const data = (await response.json()) as {
+    choices?: Array<{ message?: { content?: string } }>;
+    usage?: {
+      prompt_tokens?: number;
+      completion_tokens?: number;
+    };
+  };
+
+  const rawContent = data.choices?.[0]?.message?.content ?? "";
+  const content = options?.prefill ? options.prefill + rawContent : rawContent;
+  const inputTokens = data.usage?.prompt_tokens ?? 0;
+  const outputTokens = data.usage?.completion_tokens ?? 0;
+  const pricing = PRICING[model] ?? { input: 1.25, output: 10 };
+  const cost =
+    (inputTokens * pricing.input + outputTokens * pricing.output) / 1_000_000;
+
+  logger.debug({ model, inputTokens, outputTokens, cost }, "OpenAI-compatible call complete");
+
+  return { content, inputTokens, outputTokens, model, cost };
 }
 
 async function callGemini(
@@ -120,6 +194,9 @@ export async function callLlm(
 
   if (provider === "gemini") {
     return callGemini(tier, systemPrompt, userPrompt, options);
+  }
+  if (provider === "openai_compat") {
+    return callOpenAICompat(tier, systemPrompt, userPrompt, options);
   }
 
   const client = getClient();
