@@ -20,6 +20,6 @@ RUN pnpm install --frozen-lockfile
 
 # Build
 COPY . .
-RUN pnpm build
+RUN pnpm --filter @ghostwriter/core build && pnpm build
 
 ENTRYPOINT ["node", "packages/cli/dist/index.js"]
