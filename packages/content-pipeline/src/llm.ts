@@ -82,9 +82,6 @@ async function callOpenAICompat(
     { role: "system", content: systemPrompt },
     { role: "user", content: userPrompt },
   ];
-  if (options?.prefill) {
-    messages.push({ role: "assistant", content: options.prefill });
-  }
 
   const response = await fetch(url, {
     method: "POST",
@@ -95,8 +92,9 @@ async function callOpenAICompat(
     body: JSON.stringify({
       model,
       messages,
-      temperature: options?.temperature ?? 1,
+      temperature: options?.temperature ?? (options?.prefill ? 0 : 1),
       max_tokens: options?.maxTokens ?? 8192,
+      ...(options?.prefill ? { response_format: { type: "json_object" } } : {}),
     }),
   });
 
@@ -114,7 +112,9 @@ async function callOpenAICompat(
   };
 
   const rawContent = data.choices?.[0]?.message?.content ?? "";
-  const content = options?.prefill ? options.prefill + rawContent : rawContent;
+  const content = options?.prefill
+    ? (rawContent.trimStart().startsWith(options.prefill) ? rawContent : options.prefill + rawContent)
+    : rawContent;
   const inputTokens = data.usage?.prompt_tokens ?? 0;
   const outputTokens = data.usage?.completion_tokens ?? 0;
   const pricing = PRICING[model] ?? { input: 1.25, output: 10 };
