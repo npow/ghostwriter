@@ -1,4 +1,4 @@
-FROM node:22-slim AS base
+FROM node:22-slim
 RUN corepack enable && corepack prepare pnpm@9.15.0 --activate
 RUN apt-get update && apt-get install -y git openssh-client && rm -rf /var/lib/apt/lists/* \
     && mkdir -p /root/.ssh && ssh-keyscan github.com >> /root/.ssh/known_hosts
@@ -16,10 +16,10 @@ COPY packages/orchestrator/package.json packages/orchestrator/
 COPY packages/publishing/package.json packages/publishing/
 COPY packages/site-setup/package.json packages/site-setup/
 COPY packages/style-fingerprint/package.json packages/style-fingerprint/
-RUN pnpm install --frozen-lockfile
+RUN pnpm install -r --frozen-lockfile
 
 # Build
 COPY . .
-RUN pnpm --filter @ghostwriter/core build && pnpm build
+RUN find packages -name "*.tsbuildinfo" -delete && pnpm -r --workspace-concurrency=1 build
 
 ENTRYPOINT ["node", "packages/cli/dist/index.js"]
