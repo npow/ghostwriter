@@ -51,6 +51,7 @@ ${config.topic.constraints ? `Constraints: ${config.topic.constraints}` : ""}
 CRITICAL RULES:
 - ONLY include facts that appear in the source data. Do NOT invent or hallucinate any information.
 - Every fact must be traceable to a specific source.
+- sourceUrl MUST be an exact URL that appears in the provided source data. If none is available, use an empty string.
 - If data is sparse, note gaps honestly — do not fill them with made-up information.
 - PRIORITIZE topics with higher engagement scores — these are trending and resonate with audiences.
 
@@ -63,6 +64,7 @@ Respond with JSON matching this structure:
 }`;
 
   const ranked = rankSources(sources);
+  const validSourceUrls = buildValidSourceUrlSet(ranked);
 
   // Truncate each source to keep the prompt within LLM context limits.
   // 45 sources × 600 chars ≈ 27k chars, well within bounds.
@@ -75,11 +77,12 @@ Respond with JSON matching this structure:
       const content = s.content.length > MAX_SOURCE_CHARS
         ? s.content.slice(0, MAX_SOURCE_CHARS) + "…"
         : s.content;
-      return `--- Source ${i + 1} [${s.provider}]${tag} ${s.title ?? ""} ---\n${content}`;
+      const url = s.url ? `\nURL: ${s.url}` : "\nURL: (none)";
+      return `--- Source ${i + 1} [${s.provider}]${tag} ${s.title ?? ""} ---${url}\n${content}`;
     })
     .join("\n\n");
 
-  let userPrompt = `Here is the source data to analyze:\n\n${sourceData}\n\nProduce a research brief as JSON.`;
+  let userPrompt = `INPUT SOURCES:\n\n${sourceData}\n\nReturn only the research brief JSON object. No prose, no markdown, no preamble.`;
 
   if (publicationHistoryPrompt) {
     userPrompt += `\n\n${publicationHistoryPrompt}\n\nDEPRIORITIZE overlapping topics — find fresh angles or skip topics already covered.`;
@@ -106,13 +109,13 @@ Respond with JSON matching this structure:
     return ["keyFacts", "findings", "keyThemes", "facts", "researchFindings", "primaryTopics", "topics", "keyFindings", "insights"].includes(camel);
   });
   if (explicitFactsKey && Array.isArray(raw[explicitFactsKey])) {
-    keyFacts = normalizeFactArray(raw[explicitFactsKey] as unknown[]);
+    keyFacts = normalizeFactArray(raw[explicitFactsKey] as unknown[], validSourceUrls);
   }
   // Fallback: find the largest array of objects in the entire response
   if (keyFacts.length === 0) {
     const objectArrays = findArraysOfObjects(raw);
     for (const arr of objectArrays) {
-      const normalized = normalizeFactArray(arr);
+      const normalized = normalizeFactArray(arr, validSourceUrls);
       if (normalized.length > 0) {
         keyFacts = normalized;
         break;
@@ -161,7 +164,10 @@ Respond with JSON matching this structure:
  * Normalize an array of unknown objects into fact objects.
  * Handles many different field name conventions the LLM might use.
  */
-function normalizeFactArray(arr: unknown[]): ResearchBrief["keyFacts"] {
+function normalizeFactArray(
+  arr: unknown[],
+  validSourceUrls: Set<string>
+): ResearchBrief["keyFacts"] {
   return arr
     .filter((item): item is Record<string, unknown> => !!item && typeof item === "object" && !Array.isArray(item))
     .map((obj) => {
@@ -178,11 +184,38 @@ function normalizeFactArray(arr: unknown[]): ResearchBrief["keyFacts"] {
         obj.source ?? obj.sources ?? obj.sourceUrl ?? obj.source_url ?? obj.url
         ?? obj.reference ?? obj.origin ?? "analysis"
       );
-      const sourceUrl = String(
+      const rawSourceUrl = String(
         obj.sourceUrl ?? obj.source_url ?? obj.url ?? obj.link ?? obj.href ?? ""
       );
+      const sourceUrl = sanitizeSourceUrl(rawSourceUrl, validSourceUrls);
 
       return { fact, source, sourceUrl };
     })
     .filter((x): x is NonNullable<typeof x> => x !== null && x.fact.length > 0);
+}
+
+function buildValidSourceUrlSet(sources: SourceMaterial[]): Set<string> {
+  const urls = new Set<string>();
+  for (const source of sources) {
+    const normalized = normalizeUrl(source.url);
+    if (normalized) urls.add(normalized);
+  }
+  return urls;
+}
+
+function sanitizeSourceUrl(rawUrl: string, validSourceUrls: Set<string>): string {
+  const normalized = normalizeUrl(rawUrl);
+  if (!normalized) return "";
+  return validSourceUrls.has(normalized) ? normalized : "";
+}
+
+function normalizeUrl(url?: string): string {
+  if (!url) return "";
+  try {
+    const parsed = new URL(url);
+    // Normalize away trailing slash for stable matching across feeds/sources.
+    return parsed.toString().replace(/\/$/, "");
+  } catch {
+    return "";
+  }
 }
