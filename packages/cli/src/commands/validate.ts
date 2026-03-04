@@ -69,12 +69,18 @@ export async function validateCommand(channelName: string) {
       }
     }
 
-    // 4. Check Anthropic API key
-    try {
-      env.anthropicApiKey;
-      console.log(chalk.green("  [PASS] Anthropic API key found"));
-    } catch {
-      console.log(chalk.red("  [FAIL] ANTHROPIC_API_KEY missing"));
+    // 4. Check LLM provider credentials
+    const hasOpenAICompat = process.env.OPENAI_API_KEY && process.env.OPENAI_BASE_URL;
+    const hasAnthropic = process.env.ANTHROPIC_API_KEY;
+    const hasGemini = process.env.GEMINI_API_KEY;
+    if (hasOpenAICompat) {
+      console.log(chalk.green(`  [PASS] LLM provider: OpenAI-compat (${process.env.OPENAI_BASE_URL})`));
+    } else if (hasAnthropic) {
+      console.log(chalk.green("  [PASS] LLM provider: Anthropic"));
+    } else if (hasGemini) {
+      console.log(chalk.green("  [PASS] LLM provider: Gemini"));
+    } else {
+      console.log(chalk.red("  [FAIL] No LLM provider: set OPENAI_API_KEY+OPENAI_BASE_URL, ANTHROPIC_API_KEY, or GEMINI_API_KEY"));
       hasErrors = true;
     }
 
